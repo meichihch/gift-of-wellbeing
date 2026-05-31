@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 48 16% 7%;
+    --foreground: 40 30% 91%;
+    --card: 48 13% 9%;
+    --card-foreground: 40 30% 91%;
+    --primary: 30 64% 72%;
+    --primary-foreground: 32 38% 13%;
+    --secondary: 40 8% 17%;
+    --muted: 40 8% 15%;
+    --muted-foreground: 36 12% 56%;
+    --accent: 40 10% 20%;
+    --border: 40 9% 18%;
+    --input: 40 9% 18%;
+    --ring: 30 64% 72%;
+    --radius: 0.85rem;
+    --primary-glow: rgba(230, 180, 137, 0.55);
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  html,
+  body {
+    margin: 0;
+    height: 100%;
+  }
+  body {
+    background: #080705;
+    color: hsl(var(--foreground));
+    font-family: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: "Noto Serif TC", ui-serif, Georgia, serif;
+  }
+}
+
+/* 過場：克制的柔和淡入 */
+@keyframes giftFade {
+  from {
+    transform: translateY(12px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+.gift-fade-in {
+  animation: giftFade 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* 呼吸動畫 */
+@keyframes gift-breath {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(0.86);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+@keyframes gift-breath-soft {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+@keyframes gift-ripple {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.35);
+  }
+  80% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+@keyframes gift-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-7px) scale(1.25);
+    opacity: 1;
+  }
+}
+.gift-breath-core {
+  animation: gift-breath 5.4s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+/* 細捲軸 */
+.gift-phone ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.gift-phone * {
+  scrollbar-width: none;
+}

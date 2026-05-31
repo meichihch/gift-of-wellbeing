@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#15140f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>幸福的禮物</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&family=Noto+Serif+TC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Noto Sans TC"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            serif: ['"Noto Serif TC"', 'ui-serif', 'Georgia', 'serif'],
+          },
+          colors: {
+            background: 'hsl(var(--background) / <alpha-value>)',
+            foreground: 'hsl(var(--foreground) / <alpha-value>)',
+            card: { DEFAULT: 'hsl(var(--card) / <alpha-value>)', foreground: 'hsl(var(--card-foreground) / <alpha-value>)' },
+            primary: { DEFAULT: 'hsl(var(--primary) / <alpha-value>)', foreground: 'hsl(var(--primary-foreground) / <alpha-value>)' },
+            secondary: 'hsl(var(--secondary) / <alpha-value>)',
+            muted: { DEFAULT: 'hsl(var(--muted) / <alpha-value>)', foreground: 'hsl(var(--muted-foreground) / <alpha-value>)' },
+            accent: 'hsl(var(--accent) / <alpha-value>)',
+            border: 'hsl(var(--border) / <alpha-value>)',
+            input: 'hsl(var(--input) / <alpha-value>)',
+            ring: 'hsl(var(--ring) / <alpha-value>)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    :root {
+      --background: 48 16% 7%;
+      --foreground: 40 30% 91%;
+      --card: 48 13% 9%;
+      --card-foreground: 40 30% 91%;
+      --primary: 30 64% 72%;
+      --primary-foreground: 32 38% 13%;
+      --secondary: 40 8% 17%;
+      --muted: 40 8% 15%;
+      --muted-foreground: 36 12% 56%;
+      --accent: 40 10% 20%;
+      --border: 40 9% 18%;
+      --input: 40 9% 18%;
+      --ring: 30 64% 72%;
+      --radius: 0.85rem;
+      --primary-glow: rgba(230, 180, 137, 0.55);
+    }
+
+    * { -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: #080705;
+      color: hsl(var(--foreground));
+      font-family: "Noto Sans TC", ui-sans-serif, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      overscroll-behavior: none;
+    }
+    .font-serif { font-family: "Noto Serif TC", ui-serif, Georgia, serif; }
+
+    /* 過場：克制的柔和淡入 */
+    @keyframes giftFade {
+      from { transform: translateY(12px); }
+      to   { transform: translateY(0); }
+    }
+    .gift-fade-in { animation: giftFade .55s cubic-bezier(.22, .61, .36, 1); }
+
+    /* 細捲軸 */
+    .gift-phone ::-webkit-scrollbar { width: 0; height: 0; }
+    .gift-phone * { scrollbar-width: none; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="app/data.js?v=10"></script>
+  <script type="text/babel" src="app/tweaks-panel.jsx?v=10"></script>
+  <script type="text/babel" src="app/ui.jsx?v=10"></script>
+  <script type="text/babel" src="app/breathing.jsx?v=10"></script>
+  <script type="text/babel" src="app/cardgen.jsx?v=10"></script>
+  <script type="text/babel" src="app/screensA.jsx?v=10"></script>
+  <script type="text/babel" src="app/screensB.jsx?v=10"></script>
+  <script type="text/babel" src="app/app.jsx?v=10"></script>
+</body>
+</html>
