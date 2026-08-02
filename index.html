@@ -215,26 +215,16 @@ function send(text){
   pushMsg({isNote:true, text:'收到了，讓我想一想。'});
   setThinking(true);
 
-  var delay = P.replyDelaySec * 1000, heavy = v.length >= 60;
   t(function(){
     setThinking(false);
-    if(heavy){
-      pushMsg({isTree:true, text:'這句話有點重。我想一個晚上，明天跟日出一起回你，好嗎？', time:now()});
-      t(function(){
-        pushMsg({isNote:true, text:'—— 隔天清晨 06:12（原型示意）——'});
-        pushMsg({isTree:true, text:'早安。'+wxLine()+'我想了一整晚。你說的那件事，換作是我，大概也會在原地站很久。不過站著不動的時候，根其實還在往下長。你已經在長了，只是自己看不見。', time:'06:12 · 跟日出一起送達'});
-        S.gained += 3;
-      }, delay + 1800);
-    } else {
-      var pool = [
-        '嗯，我聽著。'+wxLine()+'不用整理好再說，想到哪，說到哪就可以。',
-        '我把這句收進年輪裡了。'+wxLine()+'風很輕，你慢慢說。'
-      ];
-      var r = chipReply(v) || pool[S.replyCount % pool.length];
-      S.replyCount++; S.gained += 1;
-      pushMsg({isTree:true, text:r, time:now()});
-    }
-  }, delay);
+    var pool = [
+      '嗯，我聽著。'+wxLine()+'不用整理好再說，想到哪，說到哪就可以。',
+      '我把這句收進年輪裡了。'+wxLine()+'風很輕，你慢慢說。'
+    ];
+    var r = chipReply(v) || pool[S.replyCount % pool.length];
+    S.replyCount++; S.gained += 1;
+    pushMsg({isTree:true, text:r, time:now()});
+  }, P.replyDelaySec * 1000);
 }
 
 /* ── 呼吸練習 ───────────────────────────────────────────── */
