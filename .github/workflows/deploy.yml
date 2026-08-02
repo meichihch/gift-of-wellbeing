@@ -1,8 +1,9 @@
 name: Deploy web/ to GitHub Pages
 
 on:
-  push:
-    branches: [main]
+  # 自動觸發已停用：Pages 現在直接服務 main 根目錄的 index.html（樹洞原型）。
+  # 這個 workflow 會把 Pages 切換成 workflow 模式並改發佈 web/dist，
+  # 若要重新啟用 web/ 版本，手動執行一次即可。
   workflow_dispatch:
 
 permissions:
