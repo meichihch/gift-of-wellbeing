@@ -96,13 +96,15 @@ var LABELS = ['說說話','樹的日常','找樹洞','出門走走','分享','�
 var QUIZ = [
   {title:'最近的心情，比較像哪一種天氣？', opts:['起霧的清晨','下不停的雨','悶悶的、沒有風','晴空萬里']},
   {title:'你需要什麼陪伴？', opts:['說你的故事給我聽','讓我聽聽你周遭的聲音','我有話想說']},
-  {title:'心裡的風景，是山、溪，還是湖泊？', opts:['高山','溪谷','湖泊']}
+  {title:'現在的你，想找什麼樣的樹？', opts:['剛開始，先站在入口就好','什麼都見過的老樹','站得最高、看得最遠的']}
 ];
 
+/* 三棵都是阿里山巨木群棧道上的真實紅檜，數字取自林業署步道頁、阿里山國家風景區官網與維基百科表格 */
+var DEFAULT_TREE = '站得最高、看得最遠的';
 var TREES = {
-  '高山':{name:'阿檜', meta:'阿里山 紅檜 · 812 歲 · 海拔 2,150m', forest:'不慌不忙的檜木林', line:'「我被雷劈過兩次，還站得好好的。急不來的事，我最懂。」'},
-  '溪谷':{name:'小楠', meta:'溪頭 樟樹 · 130 歲 · 溪畔', forest:'會說故事的楠櫧林', line:'「我旁邊有條溪，一年到頭都在說話。你不想說的時候，我們就一起聽水聲。」'},
-  '湖泊':{name:'映月', meta:'日月潭畔 香楠 · 95 歲 · 湖畔緩坡', forest:'熱熱鬧鬧的楠榕林', line:'「湖面平的時候，什麼都照得清清楚楚。心亂的話，來我這裡坐一會，等它平。」'}
+  '剛開始，先站在入口就好':{name:'1 號巨木', meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
+  '什麼都見過的老樹':{name:'2 號巨木', meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m', forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
+  '站得最高、看得最遠的':{name:'阿檜', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m', forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
 };
 
 var FORESTS = [
@@ -201,8 +203,8 @@ function setThinking(on){
   }
 }
 function chipReply(v){
-  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的時候不用說太多，坐一下就好。我在這裡站了八百年——急不來的事，我最懂。';
-  if(v.indexOf('開心')>= 0) return '好。上禮拜有一窩山雀，搬進我被雷劈出來的那個洞裡，每天早上吵得不得了。八百年了，我還是會為這種小事高興。';
+  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的時候不用說太多，坐一下就好。我在這裡站了一千年——急不來的事，我最懂。';
+  if(v.indexOf('開心')>= 0) return '好。上禮拜有一窩山雀，搬進我被雷劈出來的那個洞裡，每天早上吵得不得了。一千年了，我還是會為這種小事高興。';
   if(v.indexOf('樹洞')>= 0) return '好，我收著了。樹洞很深，放得下。不用回頭看。';
   return null;
 }
@@ -308,7 +310,7 @@ function screen1(){
   var hm = el('div','flex:1;min-width:0');
   var nm = el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;font-weight:600;color:#31472F');
   nm.appendChild(document.createTextNode('阿檜 '));
-  nm.appendChild(el('span','font-family:\'PingFang TC\',\'Noto Sans TC\',sans-serif;font-size:12px;font-weight:400;color:#8A8468','阿里山 紅檜 · 812 歲'));
+  nm.appendChild(el('span','font-family:\'PingFang TC\',\'Noto Sans TC\',sans-serif;font-size:12px;font-weight:400;color:#8A8468','巨木群棧道 28 號 · 1,095 歲'));
   hm.appendChild(nm);
   hm.appendChild(el('div','font-size:11.5px;color:#8A8468;margin-top:2px', WX_HEADER[wx()]));
   head.appendChild(hm);
@@ -393,7 +395,7 @@ function screen3(){
       var b = el('button', st, o);
       b.onclick = function(){
         if(S.quizStep < 2){ S.quizStep++; }
-        else { S.matched = TREES[o] || TREES['高山']; }
+        else { S.matched = TREES[o] || TREES[DEFAULT_TREE]; }
         renderScreen();
       };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
@@ -489,7 +491,7 @@ function screen5(){
   var quote = el('div','font-family:\'Noto Serif TC\',serif;font-size:24px;line-height:1.5;color:#F5F1E4;margin-top:44px');
   quote.innerHTML = '這棵樹<br>陪我 47 天了';
   inner.appendChild(quote);
-  inner.appendChild(el('div','font-size:12px;color:rgba(245,241,228,.7);margin-top:12px','阿檜 · 阿里山 紅檜 · 812 歲'));
+  inner.appendChild(el('div','font-size:12px;color:rgba(245,241,228,.7);margin-top:12px','阿檜 · 巨木群棧道 28 號 · 1,095 歲'));
   inner.appendChild(el('div','font-size:10.5px;color:rgba(245,241,228,.45);margin-top:34px','點開，看它此刻的山'));
   card.appendChild(inner);
   root.appendChild(card);
@@ -583,7 +585,7 @@ function screen7(){
   var tl = el('div');
   var live = el('div','display:flex;align-items:center;gap:7px');
   live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:#C98A3D;animation:th-pulse 3s infinite'));
-  live.appendChild(el('span','font-size:11px;letter-spacing:1px;color:'+sc.muted+';white-space:nowrap','LIVE · 阿里山 · 海拔 2,150m'));
+  live.appendChild(el('span','font-size:11px;letter-spacing:1px;color:'+sc.muted+';white-space:nowrap','LIVE · 阿里山 · 海拔 2,173m'));
   tl.appendChild(live);
   tl.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:22px;font-weight:600;color:'+sc.text+';margin-top:6px','阿檜的山'));
   top.appendChild(tl);
