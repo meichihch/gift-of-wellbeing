@@ -401,9 +401,16 @@ function screen3(){
     var q = QUIZ[S.quizStep] || QUIZ[0];
     var card = el('div','margin-top:16px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:22px 20px');
     card.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A96F28;margin-bottom:14px','讓心情帶路'));
-    var dots = el('div','display:flex;gap:6px;margin-bottom:16px');
+    var dotsRow = el('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:16px');
+    var dots = el('div','display:flex;gap:6px');
     [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:24px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?'#4E6B4A':'#E0D8BE'))); });
-    card.appendChild(dots);
+    dotsRow.appendChild(dots);
+    if(S.quizStep > 0){
+      var prev = el('button','border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;padding:0;white-space:nowrap','‹ 上一題');
+      prev.onclick = function(){ S.quizStep--; renderScreen(); };
+      dotsRow.appendChild(prev);
+    }
+    card.appendChild(dotsRow);
     card.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;color:#31472F;line-height:1.6', q.title));
     var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
     q.opts.forEach(function(o){
@@ -411,7 +418,7 @@ function screen3(){
       var b = el('button', st, o);
       b.onclick = function(){
         if(S.quizStep < 2){ S.quizStep++; }
-        else { S.matched = TREES[o] || TREES[DEFAULT_TREE]; }
+        else { S.matched = TREES[o] || TREES[DEFAULT_TREE]; S.matchedVia = 'quiz'; }
         renderScreen();
       };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
@@ -425,7 +432,7 @@ function screen3(){
     FORESTS.forEach(function(f){
       var st = 'padding:6px 12px;border-radius:999px;border:1px solid #E0D8BE;background:#F5F1E4;font-size:11.5px;color:#6B6A50;white-space:nowrap;cursor:pointer;font-family:inherit';
       var b = el('button', st, f.label);
-      b.onclick = function(){ S.matched = f.tree; renderScreen(); };
+      b.onclick = function(){ S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
       fw.appendChild(b);
     });
@@ -441,9 +448,17 @@ function screen3(){
     var st = 'margin-top:18px;width:100%;padding:12px;border-radius:999px;border:none;background:#4E6B4A;color:#F5F1E4;font-size:14px;cursor:pointer;font-family:inherit';
     var b1 = el('button', st, '跟它說第一句話'); b1.onclick = go(1); hover(b1,'background:#43573F', st);
     c.appendChild(b1);
-    var b2 = el('button','margin-top:8px;border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap','重新配對');
+    var links = el('div','display:flex;justify-content:center;gap:18px;margin-top:8px');
+    var lst = 'border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;padding:0';
+    if(S.matchedVia === 'quiz'){
+      var b3 = el('button', lst, '‹ 上一題');
+      b3.onclick = function(){ S.matched = null; renderScreen(); };   /* 回到第三題，前兩題的進度保留 */
+      links.appendChild(b3);
+    }
+    var b2 = el('button', lst, '重新配對');
     b2.onclick = function(){ S.matched = null; S.quizStep = 0; renderScreen(); };
-    c.appendChild(b2);
+    links.appendChild(b2);
+    c.appendChild(links);
     root.appendChild(c);
   }
   return root;
