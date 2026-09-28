@@ -79,7 +79,7 @@ var P = { weather:'起霧', replyDelaySec:3, startRings:487 };
 var S = {
   screen:1, thinking:false, gained:0, planted:false,
   quizStep:0, matched:null,
-  breathing:false, bDone:false, phase:'', bScale:1, bDur:4, cycles:0,
+  breathing:false, bDone:false, bIdx:0, phase:'', bScale:1, bDur:4, cycles:0,
   toast:'', replyCount:0,
   messages:[
     {isTree:true, hasImg:true, text:'早安，今天山上起霧了，有種清新的美感。我想分享給你', time:'06:12 · 跟日出一起送達'},
@@ -232,17 +232,19 @@ function send(text){
 /* ── 呼吸練習：五次就好，做完自動停下；年輪安靜地長，不在畫面上計數 ── */
 var PHASES = [['吸氣',4,1.32], ['停住',2,1.32], ['慢慢吐',6,1]];
 var BREATH_ROUNDS = 5;
+var PHASE_END = [4/12, 6/12, 1];   /* 各階段結束時在「一次呼吸」裡的進度（4s＋2s＋6s） */
 function paintBreath(){
   if(!ui.bCircle) return;
   ui.bCircle.style.transform  = 'scale('+S.bScale+')';
   ui.bCircle.style.transition = 'transform '+S.bDur+'s cubic-bezier(.4,0,.4,1)';
-  ui.bLabel.textContent = S.breathing ? S.phase : (S.bDone ? '好了' : '跟我呼吸');
+  ui.bLabel.textContent = S.breathing ? S.phase : (S.bDone ? '完成' : '跟我呼吸');
   ui.bBtn.textContent   = S.breathing ? '停下來' : (S.bDone ? '再一次' : '開始');
-  ui.bNote.textContent  = (S.bDone && !S.breathing) ? '五次，剛剛好。' : '';
-  var show = S.breathing || S.bDone;
-  for(var i=0;i<ui.bDots.length;i++){
-    ui.bDots[i].style.opacity = show ? (i < S.cycles ? '1' : '.22') : '0';
-  }
+  ui.bNote.textContent  = (S.bDone && !S.breathing) ? '你可以在任何時候跟我一起呼吸。' : '';
+  /* 進度條：跟著呼吸節奏連續填滿，五次做完剛好滿 */
+  var pct = S.bDone ? 100 : (S.breathing ? ((S.cycles + PHASE_END[S.bIdx]) / BREATH_ROUNDS) * 100 : 0);
+  ui.bBar.style.opacity   = (S.breathing || S.bDone) ? '1' : '0';
+  ui.bFill.style.transition = S.breathing ? ('width '+S.bDur+'s linear') : 'width .6s ease';
+  ui.bFill.style.width    = pct + '%';
 }
 function stepB(i){
   if(!br) return;
@@ -250,11 +252,13 @@ function stepB(i){
     S.cycles++; S.gained++;
     if(S.cycles >= BREATH_ROUNDS){
       br=false; S.breathing=false; S.bDone=true; S.phase=''; S.bScale=1; S.bDur=1.4;
-      paintBreath(); return;
+      paintBreath();
+    } else {
+      stepB(0);
     }
-    paintBreath(); stepB(0); return;
+    return;
   }
-  S.phase = PHASES[i][0]; S.bDur = PHASES[i][1]; S.bScale = PHASES[i][2];
+  S.bIdx = i; S.phase = PHASES[i][0]; S.bDur = PHASES[i][1]; S.bScale = PHASES[i][2];
   paintBreath();
   t(function(){ stepB(i+1); }, PHASES[i][1]*1000);
 }
@@ -467,14 +471,10 @@ function screen4(){
   var circle = el('div','width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(78,107,74,.22),rgba(78,107,74,.08));border:1px solid rgba(78,107,74,.35);display:flex;align-items:center;justify-content:center');
   var label = el('span','font-family:\'Noto Serif TC\',serif;font-size:16px;color:#31472F','跟我呼吸');
   circle.appendChild(label); holder.appendChild(circle); bcard.appendChild(holder);
-  /* 五個很淡的點：讓人知道快結束了，不是計分 */
-  var dots = el('div','display:flex;gap:8px;height:5px;margin:0 0 16px');
-  var dotEls = [];
-  for(var i=0;i<BREATH_ROUNDS;i++){
-    var d = el('span','width:5px;height:5px;border-radius:50%;background:#4E6B4A;opacity:0;transition:opacity .6s');
-    dots.appendChild(d); dotEls.push(d);
-  }
-  bcard.appendChild(dots);
+  /* 進度條：讓人知道快結束了，不是計分；閒置時隱藏 */
+  var bar  = el('div','width:130px;height:3px;border-radius:2px;background:rgba(78,107,74,.16);overflow:hidden;opacity:0;transition:opacity .6s;margin:0 0 16px');
+  var fill = el('div','height:100%;width:0%;background:#4E6B4A;border-radius:2px');
+  bar.appendChild(fill); bcard.appendChild(bar);
   var bst = 'padding:10px 26px;border-radius:999px;border:none;background:#4E6B4A;color:#F5F1E4;font-size:13.5px;cursor:pointer;font-family:inherit';
   var btn = el('button', bst, '開始');
   btn.onclick = toggleBreath; hover(btn,'background:#43573F', bst);
@@ -483,7 +483,7 @@ function screen4(){
   bcard.appendChild(note);
   root.appendChild(bcard);
 
-  ui.bCircle = circle; ui.bLabel = label; ui.bBtn = btn; ui.bDots = dotEls; ui.bNote = note;
+  ui.bCircle = circle; ui.bLabel = label; ui.bBtn = btn; ui.bBar = bar; ui.bFill = fill; ui.bNote = note;
   paintBreath();
   return root;
 }
@@ -670,7 +670,7 @@ function paintChrome(){
 
 function renderScreen(){
   ui.chat = null; ui.thinkNode = null; ui.input = null;
-  ui.bCircle = null; ui.bLabel = null; ui.bBtn = null; ui.bDots = null; ui.bNote = null;
+  ui.bCircle = null; ui.bLabel = null; ui.bBtn = null; ui.bBar = null; ui.bFill = null; ui.bNote = null;
   var host = document.getElementById('screenHost');
   host.innerHTML = '';
   host.appendChild(BUILDERS[S.screen - 1]());
