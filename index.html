@@ -78,7 +78,7 @@ var P = { weather:'起霧', replyDelaySec:3, startRings:487 };
 /* ── state ──────────────────────────────────────────────── */
 var S = {
   screen:1, thinking:false, gained:0, planted:false,
-  quizStep:0, matched:null,
+  quizStep:0, quizAns:[], matched:null,
   breathing:false, bDone:false, bIdx:0, phase:'', bScale:1, bDur:4, cycles:0,
   toast:'', replyCount:0,
   messages:[
@@ -93,19 +93,43 @@ function t(fn, ms){ timers.push(setTimeout(fn, ms)); }
 /* ── 資料 ───────────────────────────────────────────────── */
 var LABELS = ['說說話','樹的日常','找樹洞','樹的邀請','分享','年輪種樹','即時風景'];
 
-var QUIZ = [
-  {title:'最近的心情，比較像哪一種天氣？', opts:['起霧的清晨','下不停的雨','悶悶的、沒有風','晴空萬里']},
-  {title:'你需要什麼陪伴？', opts:['說你的故事給我聽','讓我聽聽你周遭的聲音','我有話想說']},
-  {title:'現在的你，想找什麼樣的樹？', opts:['剛開始，先站在入口就好','什麼都見過的老樹','站得最高、看得最遠的']}
-];
-
 /* 三棵都是阿里山巨木群棧道上的真實紅檜，數字取自林業署步道頁、阿里山國家風景區官網與維基百科表格 */
-var DEFAULT_TREE = '站得最高、看得最遠的';
 var TREES = {
-  '剛開始，先站在入口就好':{name:'1 號巨木', meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
-  '什麼都見過的老樹':{name:'2 號巨木', meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m', forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
-  '站得最高、看得最遠的':{name:'阿檜', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m', forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
+  t1: {name:'1 號巨木', meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
+  t2: {name:'2 號巨木', meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m', forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
+  t28:{name:'阿檜', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m', forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
 };
+var DEFAULT_TREE = 't28';
+
+/* 讓心情帶路：三題各投一棵樹，第一、二題各 1 分，第三題 1.5 分。
+   第三題通常決定結果，但前兩題若指向同一棵，心情會蓋過第三題；平手以第三題為準。
+   選項一律以回答的人為主語，樹直接點名，避免「你」同時指人又指樹。 */
+var QUIZ = [
+  {title:'最近的心情，比較像哪一種天氣？', opts:[
+    {label:'起霧的清晨',   tree:'t1'},
+    {label:'下不停的雨',   tree:'t2'},
+    {label:'悶悶的、沒有風', tree:'t1'},
+    {label:'晴空萬里',     tree:'t28'}]},
+  {title:'你需要什麼陪伴？', opts:[
+    {label:'聽樹說它的故事', tree:'t2'},
+    {label:'聽山上的聲音',   tree:'t1'},
+    {label:'我想說說話',     tree:'t28'}]},
+  {title:'現在的你，想找什麼樣的樹？', opts:[
+    {label:'剛開始，先站在入口就好', tree:'t1'},
+    {label:'什麼都見過的老樹',       tree:'t2'},
+    {label:'站得最高、看得最遠的',   tree:'t28'}]}
+];
+var QUIZ_WEIGHT = [1, 1, 1.5];
+function quizResult(){
+  var score = {t1:0, t2:0, t28:0};
+  S.quizAns.forEach(function(id, i){ score[id] += QUIZ_WEIGHT[i]; });
+  var best = DEFAULT_TREE, bestScore = -1;
+  Object.keys(score).forEach(function(id){
+    var sc = score[id] + (id === S.quizAns[2] ? 0.01 : 0);   /* 平手時以第三題為準 */
+    if(sc > bestScore){ bestScore = sc; best = id; }
+  });
+  return TREES[best];
+}
 
 var FORESTS = [
   {label:'有活力的闊葉林', tree:{name:'阿樟', meta:'溪頭 樟樹 · 320 歲 · 闊葉林緣', forest:'有活力的闊葉林', line:'「我這裡整天都有鳥在吵，熱鬧得很。你來，分你一半。」'}},
@@ -406,8 +430,8 @@ function screen3(){
     [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:24px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?'#4E6B4A':'#E0D8BE'))); });
     dotsRow.appendChild(dots);
     if(S.quizStep > 0){
-      var prev = el('button','border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;padding:0;white-space:nowrap','‹ 上一題');
-      prev.onclick = function(){ S.quizStep--; renderScreen(); };
+      var prev = el('button','border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;padding:0;white-space:nowrap','‹ 上一步');
+      prev.onclick = function(){ S.quizStep--; S.quizAns.length = S.quizStep; renderScreen(); };
       dotsRow.appendChild(prev);
     }
     card.appendChild(dotsRow);
@@ -415,10 +439,11 @@ function screen3(){
     var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
     q.opts.forEach(function(o){
       var st = 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
-      var b = el('button', st, o);
+      var b = el('button', st, o.label);
       b.onclick = function(){
+        S.quizAns[S.quizStep] = o.tree;
         if(S.quizStep < 2){ S.quizStep++; }
-        else { S.matched = TREES[o] || TREES[DEFAULT_TREE]; S.matchedVia = 'quiz'; }
+        else { S.matched = quizResult(); S.matchedVia = 'quiz'; }
         renderScreen();
       };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
@@ -451,12 +476,12 @@ function screen3(){
     var links = el('div','display:flex;justify-content:center;gap:18px;margin-top:8px');
     var lst = 'border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;padding:0';
     if(S.matchedVia === 'quiz'){
-      var b3 = el('button', lst, '‹ 上一題');
-      b3.onclick = function(){ S.matched = null; renderScreen(); };   /* 回到第三題，前兩題的進度保留 */
+      var b3 = el('button', lst, '‹ 上一步');
+      b3.onclick = function(){ S.matched = null; S.quizAns.length = 2; renderScreen(); };   /* 回到第三題，前兩題的答案保留 */
       links.appendChild(b3);
     }
     var b2 = el('button', lst, '重新配對');
-    b2.onclick = function(){ S.matched = null; S.quizStep = 0; renderScreen(); };
+    b2.onclick = function(){ S.matched = null; S.quizStep = 0; S.quizAns = []; renderScreen(); };
     links.appendChild(b2);
     c.appendChild(links);
     root.appendChild(c);
