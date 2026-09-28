@@ -115,20 +115,21 @@ var QUIZ = [
     {label:'聽山上的聲音',   tree:'t1'},
     {label:'我需要樹洞',     tree:'t28'}]},
   {title:'現在的你，想找什麼樣的樹？', opts:[
-    {label:'剛開始，先站在入口就好', tree:'t1'},
+    {label:'沒有特別的想法，請推薦我', tree:null},   /* 不投票，交給前兩題的心情決定 */
     {label:'什麼都見過的老樹',       tree:'t2'},
     {label:'站得最高、看得最遠的',   tree:'t28'}]}
 ];
 var QUIZ_WEIGHT = [1, 1, 1.5];
 function quizResult(){
   var score = {t1:0, t2:0, t28:0};
-  S.quizAns.forEach(function(id, i){ score[id] += QUIZ_WEIGHT[i]; });
-  var best = DEFAULT_TREE, bestScore = -1;
-  Object.keys(score).forEach(function(id){
-    var sc = score[id] + (id === S.quizAns[2] ? 0.01 : 0);   /* 平手時以第三題為準 */
-    if(sc > bestScore){ bestScore = sc; best = id; }
-  });
-  return TREES[best];
+  S.quizAns.forEach(function(id, i){ if(id) score[id] += QUIZ_WEIGHT[i]; });
+  var ids = Object.keys(score);
+  var max = Math.max.apply(null, ids.map(function(id){ return score[id]; }));
+  var leaders = ids.filter(function(id){ return score[id] === max; });
+  if(leaders.length === 1) return TREES[leaders[0]];
+  /* 平手：第三題有選就以第三題為準；選「請推薦我」（前兩題指向不同的樹）就推薦阿檜 */
+  var q3 = S.quizAns[2];
+  return TREES[(q3 && leaders.indexOf(q3) >= 0) ? q3 : DEFAULT_TREE];
 }
 
 var FORESTS = [
