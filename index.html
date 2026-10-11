@@ -123,9 +123,9 @@ var QUIZ = [
    入口的 1 號清晨先遇到霧、最老的 2 號經過的風最多、阿檜的洞裡住著一窩山雀 */
 var QUIZ3_SOUND = {title:'你想聽樹旁邊的哪種聲音？', opts:[
     {label:'沒有特別的想法，請推薦我', tree:null},
-    {label:'霧滴落在葉子上的聲音',   tree:'t1'},
-    {label:'風吹過樹冠的聲音',       tree:'t2'},
-    {label:'山雀在枝頭上叫',         tree:'t28'}]};
+    {label:'霧滴落在葉子上的聲音',   tree:'t1',  sound:'fog'},
+    {label:'風吹過樹冠的聲音',       tree:'t2',  sound:'wind'},
+    {label:'山雀在枝頭上叫',         tree:'t28', sound:'birds'}]};
 function quizAt(step){
   if(step === 2 && S.quizPick[1] && S.quizPick[1].branch === 'sound') return QUIZ3_SOUND;
   return QUIZ[step];
@@ -191,6 +191,137 @@ function showToast(msg){
   t(function(){ n.style.display='none'; S.toast=''; }, 2600);
 }
 function go(n){ return function(){ setScreen(n); }; }
+
+/* ── 樹旁邊的聲音：Web Audio 即時合成，不用錄音檔 ─────────────
+   之後可換成 Xeno-canto（只取 CC BY／BY-SA）或 Freesound（CC0／CC BY）的真實錄音 */
+var SND = { ctx:null, out:null, key:null, bus:null, stopScene:null };
+function sndCtx(){
+  if(!SND.ctx){
+    var C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return null;
+    SND.ctx = new C();
+    /* 輸出端的壓縮器：聲音疊在一起時不會爆音 */
+    SND.out = SND.ctx.createDynamicsCompressor();
+    SND.out.threshold.value = -10; SND.out.knee.value = 8; SND.out.ratio.value = 6;
+    SND.out.attack.value = 0.005; SND.out.release.value = 0.2;
+    SND.out.connect(SND.ctx.destination);
+  }
+  if(SND.ctx.state === 'suspended') SND.ctx.resume();
+  return SND.ctx;
+}
+function noiseSrc(ctx, kind){
+  var n = ctx.sampleRate * 2, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+  var b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0,last=0;
+  for(var i=0;i<n;i++){
+    var w = Math.random()*2 - 1;
+    if(kind === 'brown'){ last = (last + 0.02*w) / 1.02; d[i] = last * 3.5; }
+    else {
+      b0=0.99886*b0+w*0.0555179; b1=0.99332*b1+w*0.0750759; b2=0.96900*b2+w*0.1538520;
+      b3=0.86650*b3+w*0.3104856; b4=0.55000*b4+w*0.5329522; b5=-0.7616*b5-w*0.0168980;
+      d[i] = (b0+b1+b2+b3+b4+b5+b6+w*0.5362) * 0.11; b6 = w*0.115926;
+    }
+  }
+  var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+  return src;
+}
+function toOut(ctx, node, out, pan){
+  if(ctx.createStereoPanner){ var p = ctx.createStereoPanner(); p.pan.value = pan || 0; node.connect(p); p.connect(out); }
+  else node.connect(out);
+}
+function noiseLayer(ctx, out, kind, type, freq, q, gain){
+  var src = noiseSrc(ctx, kind), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  f.type = type; f.frequency.value = freq; if(q) f.Q.value = q; g.gain.value = gain;
+  src.connect(f); f.connect(g); g.connect(out); src.start();
+  return { src:src, filter:f, gain:g };
+}
+/* 霧滴：很淡的空氣聲，加上隨機落下的水滴，偶爾彈一下 */
+function sceneFog(ctx, out){
+  var alive = true, bed = noiseLayer(ctx, out, 'pink', 'highpass', 1800, 0, 0.08);
+  function drip(){
+    if(!alive) return;
+    var t0 = ctx.currentTime + 0.01, f = 1300 + Math.random()*1500, pan = Math.random()*1.6 - 0.8;
+    var count = Math.random() < 0.25 ? 2 : 1;
+    for(var k=0;k<count;k++){
+      var t = t0 + k*(0.09 + Math.random()*0.05), ff = f * (k ? 0.8 : 1);
+      var o = ctx.createOscillator(), e = ctx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(ff, t);
+      o.frequency.exponentialRampToValueAtTime(ff*0.55, t + 0.07);
+      e.gain.setValueAtTime(0.0001, t);
+      e.gain.exponentialRampToValueAtTime((k ? 0.22 : 0.45) * (0.5 + Math.random()*0.5), t + 0.004);
+      e.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      o.connect(e); toOut(ctx, e, out, pan);
+      o.start(t); o.stop(t + 0.16);
+    }
+    setTimeout(drip, 220 + Math.random()*1100);
+  }
+  drip();
+  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+}
+/* 風吹過樹冠：低沉的風加上高頻的葉子沙沙聲，一陣一陣 */
+function sceneWind(ctx, out){
+  var alive = true;
+  var wind = noiseLayer(ctx, out, 'brown', 'bandpass', 500, 0.6, 0.5);
+  var leaf = noiseLayer(ctx, out, 'pink',  'highpass', 3000, 0, 0.04);
+  function gust(){
+    if(!alive) return;
+    var now = ctx.currentTime, s = Math.random();
+    wind.gain.gain.setTargetAtTime(0.28 + s*0.72, now, 0.8);
+    wind.filter.frequency.setTargetAtTime(350 + s*700, now, 1.0);
+    leaf.gain.gain.setTargetAtTime(0.02 + s*0.1, now, 0.6);
+    setTimeout(gust, 1400 + Math.random()*2600);
+  }
+  gust();
+  return function(){ alive = false; try{ wind.src.stop(); }catch(e){} try{ leaf.src.stop(); }catch(e){} };
+}
+/* 山雀：遠遠的林間底噪，加上兩音一組、重複幾次的叫聲，從不同方向傳來 */
+function sceneBirds(ctx, out){
+  var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 700, 0, 0.18);
+  function note(t, f0, f1, dur, vol, pan){
+    var o = ctx.createOscillator(), e = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(e); toOut(ctx, e, out, pan);
+    o.start(t); o.stop(t + dur + 0.02);
+  }
+  function phrase(){
+    if(!alive) return;
+    var t = ctx.currentTime + 0.05, pan = Math.random()*1.4 - 0.7, vol = 0.2 + Math.random()*0.15;
+    var base = 4200 + Math.random()*900, reps = 2 + Math.floor(Math.random()*3);
+    for(var r=0;r<reps;r++){
+      note(t,        base*1.15, base,      0.07, vol,      pan);
+      note(t + 0.11, base*0.78, base*0.7,  0.09, vol*0.85, pan);
+      t += 0.28;
+    }
+    setTimeout(phrase, reps*280 + 1200 + Math.random()*3200);
+  }
+  phrase();
+  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+}
+var SOUNDSCAPES = { fog:sceneFog, wind:sceneWind, birds:sceneBirds };
+function playSound(key){
+  if(SND.key === key) return;
+  stopSound();
+  var ctx = sndCtx(); if(!ctx || !SOUNDSCAPES[key]) return;
+  var bus = ctx.createGain();
+  bus.gain.setValueAtTime(0.0001, ctx.currentTime);
+  bus.gain.exponentialRampToValueAtTime(0.9, ctx.currentTime + 0.8);
+  bus.connect(SND.out);
+  SND.key = key; SND.bus = bus; SND.stopScene = SOUNDSCAPES[key](ctx, bus);
+}
+function stopSound(){
+  if(!SND.key) return;
+  var ctx = SND.ctx, bus = SND.bus, stop = SND.stopScene, now = ctx.currentTime;
+  SND.key = null; SND.bus = null; SND.stopScene = null;
+  bus.gain.cancelScheduledValues(now);
+  bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), now);
+  bus.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+  setTimeout(function(){ stop(); try{ bus.disconnect(); }catch(e){} }, 450);
+}
+function toggleSound(key){ if(SND.key === key) stopSound(); else playSound(key); }
 
 /* ── 對話 ───────────────────────────────────────────────── */
 function msgNode(m){
@@ -443,23 +574,34 @@ function screen3(){
     dotsRow.appendChild(dots);
     if(S.quizStep > 0){
       var prev = el('button','border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;padding:0;white-space:nowrap','‹ 上一步');
-      prev.onclick = function(){ S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); };
+      prev.onclick = function(){ stopSound(); S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); };
       dotsRow.appendChild(prev);
     }
     card.appendChild(dotsRow);
     card.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;color:#31472F;line-height:1.6', q.title));
+    var hasSound = q.opts.some(function(o){ return o.sound; });
+    if(hasSound) card.appendChild(el('div','font-size:12px;color:#8A8468;margin-top:4px','先按 ▶ 聽聽看，再選。'));
     var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
     q.opts.forEach(function(o){
-      var st = 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
+      var st = (o.sound ? 'flex:1;min-width:0;' : '') + 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
       var b = el('button', st, o.label);
       b.onclick = function(){
         S.quizPick[S.quizStep] = o;
+        if(o.sound) playSound(o.sound); else stopSound();
         if(S.quizStep < 2){ S.quizStep++; }
         else { S.matched = quizResult(); S.matchedVia = 'quiz'; }
         renderScreen();
       };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
-      opts.appendChild(b);
+      if(!o.sound){ opts.appendChild(b); return; }
+      /* 有聲音的選項：右邊一顆試聽鍵，點選項本身仍是「選這個」 */
+      var on = SND.key === o.sound;
+      var row = el('div','display:flex;gap:8px;align-items:stretch');
+      var pb = el('button','width:46px;flex-shrink:0;border-radius:14px;border:1px solid '+(on?'#4E6B4A':'#E0D8BE')+';background:'+(on?'#4E6B4A':'#F5F1E4')+';color:'+(on?'#F5F1E4':'#4E6B4A')+';font-size:12px;cursor:pointer;font-family:inherit', on ? '❚❚' : '▶');
+      pb.setAttribute('aria-label', (on ? '停止試聽：' : '試聽：') + o.label);
+      pb.onclick = function(){ toggleSound(o.sound); renderScreen(); };
+      row.appendChild(b); row.appendChild(pb);
+      opts.appendChild(row);
     });
     card.appendChild(opts);
     root.appendChild(card);
@@ -469,7 +611,7 @@ function screen3(){
     FORESTS.forEach(function(f){
       var st = 'padding:6px 12px;border-radius:999px;border:1px solid #E0D8BE;background:#F5F1E4;font-size:11.5px;color:#6B6A50;white-space:nowrap;cursor:pointer;font-family:inherit';
       var b = el('button', st, f.label);
-      b.onclick = function(){ S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); };
+      b.onclick = function(){ stopSound(); S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
       fw.appendChild(b);
     });
@@ -481,6 +623,15 @@ function screen3(){
     c.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:26px;font-weight:600;color:#31472F;margin-top:10px', m.name));
     c.appendChild(el('div','font-size:12.5px;color:#8A8468;margin-top:6px', m.meta));
     c.appendChild(el('div','display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;border:1px solid #E0D8BE;font-size:11.5px;color:#6B6A50;white-space:nowrap','住在'+m.forest));
+    /* 從聲音那條路來的：繼續播剛剛選的聲音，可以停 */
+    var picked = S.matchedVia === 'quiz' && S.quizPick[2] && S.quizPick[2].sound ? S.quizPick[2] : null;
+    if(picked){
+      var on = SND.key === picked.sound;
+      var sb = el('button','display:flex;align-items:center;justify-content:center;gap:6px;margin:12px auto 0;padding:6px 14px;border-radius:999px;border:1px solid '+(on?'#4E6B4A':'#E0D8BE')+';background:'+(on?'rgba(78,107,74,.08)':'none')+';color:#4E6B4A;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap', (on ? '❚❚  ' : '▶  ') + picked.label);
+      sb.setAttribute('aria-label', (on ? '停止：' : '播放：') + picked.label);
+      sb.onclick = function(){ toggleSound(picked.sound); renderScreen(); };
+      c.appendChild(sb);
+    }
     c.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:14px;line-height:1.9;color:#3A4634;margin-top:14px;text-align:left', m.line));
     var st = 'margin-top:18px;width:100%;padding:12px;border-radius:999px;border:none;background:#4E6B4A;color:#F5F1E4;font-size:14px;cursor:pointer;font-family:inherit';
     var b1 = el('button', st, '跟它說第一句話'); b1.onclick = go(1); hover(b1,'background:#43573F', st);
@@ -489,11 +640,11 @@ function screen3(){
     var lst = 'border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;padding:0';
     if(S.matchedVia === 'quiz'){
       var b3 = el('button', lst, '‹ 上一步');
-      b3.onclick = function(){ S.matched = null; S.quizPick.length = 2; renderScreen(); };   /* 回到第三題，前兩題的答案保留 */
+      b3.onclick = function(){ stopSound(); S.matched = null; S.quizPick.length = 2; renderScreen(); };   /* 回到第三題，前兩題的答案保留 */
       links.appendChild(b3);
     }
     var b2 = el('button', lst, '重新配對');
-    b2.onclick = function(){ S.matched = null; S.quizStep = 0; S.quizPick = []; renderScreen(); };
+    b2.onclick = function(){ stopSound(); S.matched = null; S.quizStep = 0; S.quizPick = []; renderScreen(); };
     links.appendChild(b2);
     c.appendChild(links);
     root.appendChild(c);
@@ -730,6 +881,7 @@ function renderScreen(){
 }
 function setScreen(n){
   if(S.screen === n){ return; }
+  if(S.screen === 3) stopSound();   /* 離開找樹洞，聲音淡出 */
   S.screen = n;
   renderScreen(); renderTabs(); renderSidebar();
 }
