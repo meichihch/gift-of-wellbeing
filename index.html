@@ -4,19 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>樹洞 · 互動原型</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
-  body{margin:0;background:#EDE7D5;font-family:"PingFang TC","Noto Sans TC",sans-serif}
-  a{color:#4E6B4A;text-decoration:none}a:hover{color:#31472F}
-  *{-webkit-font-smoothing:antialiased}
-  @keyframes th-pulse{0%,100%{opacity:.3;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  body{margin:0;background:#E3E8E2;color:#0F2418;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif}
+  button,input{font-family:inherit}
+  @keyframes th-pulse{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
   @keyframes th-drift{0%{transform:translateX(-5%)}50%{transform:translateX(5%)}100%{transform:translateX(-5%)}}
-  @keyframes th-dots{0%,100%{opacity:.2}50%{opacity:.9}}
-  @keyframes th-emerge{0%{transform:scale(.55);opacity:0}100%{transform:scale(1);opacity:1}}
+  @keyframes th-dots{0%,100%{opacity:.2}50%{opacity:.95}}
   @keyframes th-draw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
   @keyframes th-breathe{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.035) rotate(1.2deg)}}
+  @keyframes th-glow{0%,100%{opacity:.7}50%{opacity:1}}
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
-  .stage{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:64px;padding:48px 32px;box-sizing:border-box;flex-wrap:wrap}
+  #app input::placeholder{color:rgba(242,246,240,.42)}
+  #app *{scrollbar-width:none}
+  #app *::-webkit-scrollbar{display:none}
+  button:focus-visible{outline:2px solid #7BE36F;outline-offset:2px}
+  .stage{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:72px;padding:48px 32px;flex-wrap:wrap}
   @media (max-width:880px){.stage{gap:32px;padding:24px 16px}.side{width:100%!important;max-width:402px}}
 </style>
 </head>
@@ -24,46 +28,38 @@
 <div class="stage">
 
   <!-- ── 左側說明與畫面切換 ───────────────────────────── -->
-  <div class="side" style="width:250px;display:flex;flex-direction:column;gap:24px">
+  <div class="side" style="width:260px;display:flex;flex-direction:column;gap:26px">
     <div>
-      <div style="font-family:'Noto Serif TC',serif;font-size:34px;font-weight:600;color:#31472F;letter-spacing:6px">樹洞</div>
-      <div style="font-size:13px;color:#8A8468;letter-spacing:3px;margin-top:6px">真的樹 · 真的聽</div>
-      <div style="font-size:12.5px;color:#8A8468;line-height:1.7;margin-top:14px">把心事說給一棵真的樹聽。七個主要畫面，手機內可直接操作。</div>
+      <div style="font-size:46px;font-weight:300;letter-spacing:6px;line-height:1;color:#0F2418">樹洞</div>
+      <div style="font-size:13px;color:#46594B;letter-spacing:3px;margin-top:14px">真的樹 · 真的聽</div>
+      <div style="font-size:12.5px;color:#5C6E60;line-height:1.75;margin-top:14px">把心事說給一棵真的樹聽。七個主要畫面，手機內可直接操作。</div>
     </div>
     <div id="screenList" style="display:flex;flex-direction:column;gap:6px"></div>
-    <div style="font-size:11px;color:#A29B7E;line-height:1.7">畫面 1 可打字（阿檜會回）· 畫面 6 可種樹 · 畫面 7 可切換時段</div>
+    <div style="font-size:11px;color:#7A8A7E;line-height:1.7">畫面 1 可打字（阿檜會回）· 畫面 6 可種樹 · 畫面 7 可切換時段</div>
   </div>
 
-  <!-- ── iOS 裝置外框 ─────────────────────────────────── -->
-  <div id="device" data-om-starter="ios-frame" style="width:402px;height:874px;border-radius:48px;overflow:hidden;position:relative;background:#F2F2F7;box-shadow:0 40px 80px rgba(0,0,0,0.18),0 0 0 1px rgba(0,0,0,0.12);font-family:-apple-system,system-ui,sans-serif;flex-shrink:0">
-    <!-- dynamic island -->
+  <!-- ── iOS 裝置外框（全部畫面都是深色，狀態列固定用淺色）── -->
+  <div id="device" data-om-starter="ios-frame" style="width:402px;height:874px;border-radius:48px;overflow:hidden;position:relative;background:#000;box-shadow:0 40px 80px rgba(15,36,24,0.28),0 0 0 1px rgba(15,36,24,0.18);font-family:-apple-system,system-ui,sans-serif;flex-shrink:0">
     <div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:24px;background:#000;z-index:50"></div>
-    <!-- status bar -->
-    <div style="position:absolute;top:0;left:0;right:0;z-index:10">
-      <div style="display:flex;gap:154px;align-items:center;justify-content:center;padding:21px 24px 19px;box-sizing:border-box;position:relative;z-index:20;width:100%">
+    <div style="position:absolute;top:0;left:0;right:0;z-index:10;pointer-events:none">
+      <div style="display:flex;gap:154px;align-items:center;justify-content:center;padding:21px 24px 19px;position:relative;z-index:20;width:100%">
         <div style="flex:1;height:22px;display:flex;align-items:center;justify-content:center;padding-top:1.5px">
-          <span id="sbTime" style="font-family:-apple-system,'SF Pro',system-ui;font-weight:590;font-size:17px;line-height:22px;color:#000">9:41</span>
+          <span style="font-family:-apple-system,'SF Pro',system-ui;font-weight:590;font-size:17px;line-height:22px;color:#fff">9:41</span>
         </div>
         <div style="flex:1;height:22px;display:flex;align-items:center;justify-content:center;gap:7px;padding-top:1px;padding-right:1px">
-          <svg width="19" height="12" viewBox="0 0 19 12"><rect class="sbIcon" x="0" y="7.5" width="3.2" height="4.5" rx="0.7"/><rect class="sbIcon" x="4.8" y="5" width="3.2" height="7" rx="0.7"/><rect class="sbIcon" x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7"/><rect class="sbIcon" x="14.4" y="0" width="3.2" height="12" rx="0.7"/></svg>
-          <svg width="17" height="12" viewBox="0 0 17 12"><path class="sbIcon" d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z"/><path class="sbIcon" d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z"/><circle class="sbIcon" cx="8.5" cy="10.5" r="1.5"/></svg>
-          <svg width="27" height="13" viewBox="0 0 27 13"><rect class="sbStroke" x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke-opacity="0.35" fill="none"/><rect class="sbIcon" x="2" y="2" width="20" height="9" rx="2"/><path class="sbIcon" d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill-opacity="0.4"/></svg>
+          <svg width="19" height="12" viewBox="0 0 19 12" fill="#fff"><rect x="0" y="7.5" width="3.2" height="4.5" rx="0.7"/><rect x="4.8" y="5" width="3.2" height="7" rx="0.7"/><rect x="9.6" y="2.5" width="3.2" height="9.5" rx="0.7"/><rect x="14.4" y="0" width="3.2" height="12" rx="0.7"/></svg>
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="#fff"><path d="M8.5 3.2C10.8 3.2 12.9 4.1 14.4 5.6L15.5 4.5C13.7 2.7 11.2 1.5 8.5 1.5C5.8 1.5 3.3 2.7 1.5 4.5L2.6 5.6C4.1 4.1 6.2 3.2 8.5 3.2Z"/><path d="M8.5 6.8C9.9 6.8 11.1 7.3 12 8.2L13.1 7.1C11.8 5.9 10.2 5.1 8.5 5.1C6.8 5.1 5.2 5.9 3.9 7.1L5 8.2C5.9 7.3 7.1 6.8 8.5 6.8Z"/><circle cx="8.5" cy="10.5" r="1.5"/></svg>
+          <svg width="27" height="13" viewBox="0 0 27 13"><rect x="0.5" y="0.5" width="23" height="12" rx="3.5" stroke="#fff" stroke-opacity="0.35" fill="none"/><rect x="2" y="2" width="20" height="9" rx="2" fill="#fff"/><path d="M25 4.5V8.5C25.8 8.2 26.5 7.2 26.5 6.5C26.5 5.8 25.8 4.8 25 4.5Z" fill="#fff" fill-opacity="0.4"/></svg>
         </div>
       </div>
     </div>
-    <!-- content -->
-    <div style="height:100%;display:flex;flex-direction:column">
-      <div style="flex:1;overflow:auto">
-        <div id="app" style="height:100%;display:flex;flex-direction:column;background:#F5F1E4;box-sizing:border-box">
-          <div id="screenHost" style="flex:1;display:flex;flex-direction:column;min-height:0"></div>
-          <div id="tabbar" style="display:flex;padding:6px 10px 30px;border-top:1px solid #E9E2CC;background:#F5F1E4"></div>
-          <div id="toast" style="position:absolute;bottom:110px;left:50%;transform:translateX(-50%);background:rgba(49,71,47,.94);color:#F5F1E4;font-size:12.5px;padding:10px 18px;border-radius:999px;white-space:nowrap;z-index:80;display:none"></div>
-        </div>
-      </div>
+    <div id="app" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif;background:radial-gradient(130% 55% at 50% -8%,#2F6142 0%,rgba(47,97,66,0) 62%),radial-gradient(100% 50% at 110% 105%,#1E4D33 0%,rgba(30,77,51,0) 60%),linear-gradient(180deg,#14301F 0%,#0B1A12 100%)">
+      <div id="screenHost" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div>
+      <div id="tabbar" style="position:absolute;left:16px;right:16px;bottom:26px;z-index:40"></div>
+      <div id="toast" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);background:rgba(10,24,16,.84);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#F2F6F0;font-size:12.5px;padding:11px 18px;border-radius:999px;white-space:nowrap;z-index:80;display:none"></div>
     </div>
-    <!-- home indicator -->
     <div style="position:absolute;bottom:0;left:0;right:0;z-index:60;height:34px;display:flex;justify-content:center;align-items:flex-end;padding-bottom:8px;pointer-events:none">
-      <div id="homeInd" style="width:139px;height:5px;border-radius:100px;background:rgba(0,0,0,0.25)"></div>
+      <div style="width:139px;height:5px;border-radius:100px;background:rgba(255,255,255,0.7)"></div>
     </div>
   </div>
 </div>
@@ -90,14 +86,30 @@ var S = {
 var timers = [], br = false, ui = {}, ringSvgCache = null;
 function t(fn, ms){ timers.push(setTimeout(fn, ms)); }
 
+/* ── 視覺 token：深林綠底、玻璃卡片、白色膠囊主按鈕、亮綠只當點綴 ── */
+var C = {
+  text:'#F2F6F0', text2:'rgba(242,246,240,.7)', text3:'rgba(242,246,240,.46)',
+  lime:'#7BE36F', ink:'#0F2418'
+};
+var GLASS      = 'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)';
+var CARD       = GLASS + ';border-radius:28px';
+var BTN_PRIMARY= 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px 18px;border-radius:999px;border:none;background:#fff;color:'+C.ink+';font-size:15px;font-weight:500;cursor:pointer';
+var BTN_GLASS  = 'display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 18px;border-radius:999px;color:'+C.text+';font-size:14.5px;cursor:pointer;' + GLASS;
+var CIRCLE     = 'width:44px;height:44px;flex-shrink:0;border-radius:50%;color:'+C.text+';display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;line-height:1;padding:0 0 2px;' + GLASS;
+var PILL_SMALL = 'padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:'+C.text2+';font-size:12px;cursor:pointer;white-space:nowrap';
+var TAG_ON_IMG = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(15,36,24,.38);color:'+C.text+';font-size:11.5px;white-space:nowrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
+var TAG        = 'display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;color:'+C.text+';font-size:12px;white-space:nowrap;' + GLASS;
+var EYEBROW    = 'font-size:11px;letter-spacing:2.5px;color:'+C.lime;
+var SCROLL     = 'flex:1;overflow-y:auto;padding:58px 18px 108px;min-height:0';
+
 /* ── 資料 ───────────────────────────────────────────────── */
 var LABELS = ['說說話','樹的日常','找樹洞','樹的邀請','分享','年輪種樹','即時風景'];
 
 /* 三棵都是阿里山巨木群棧道上的真實紅檜，數字取自林業署步道頁、阿里山國家風景區官網與維基百科表格 */
 var TREES = {
-  t1: {name:'1 號巨木', meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
-  t2: {name:'2 號巨木', meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m', forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
-  t28:{name:'阿檜', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m', forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
+  t1: {name:'1 號巨木', num:'1 號',  meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
+  t2: {name:'2 號巨木', num:'2 號',  meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m',   forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
+  t28:{name:'阿檜',     num:'28 號', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m',  forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
 };
 var DEFAULT_TREE = 't28';
 
@@ -156,11 +168,12 @@ var FORESTS = [
 
 var STARS = [{l:12,t:14,w:2},{l:26,t:8,w:1.5},{l:38,t:20,w:2},{l:52,t:11,w:1.5},{l:64,t:24,w:2},{l:74,t:9,w:1.5},{l:86,t:17,w:2},{l:20,t:30,w:1.5},{l:58,t:33,w:1.5},{l:80,t:36,w:2},{l:34,t:38,w:1.5},{l:92,t:28,w:1.5}];
 
+/* 即時風景：四個時段都留在綠色調裡，天空頂端夠暗，讓淺色字與狀態列看得清楚 */
 var SCENES = {
-  '晨':{sky:'linear-gradient(180deg,#8FA79B,#E9E2CB)', hillA:'#5C7355', hillB:'#43573F', fog:.5,  star:0,   text:'#31472F', muted:'rgba(49,71,47,.65)',   temp:'現在 · 14°C · 起霧',        sound:'環境音：霧滴 · 山雀（近）· 風很輕'},
-  '午':{sky:'linear-gradient(180deg,#A9C2B0,#F2ECD9)', hillA:'#5C7355', hillB:'#43573F', fog:.14, star:0,   text:'#31472F', muted:'rgba(49,71,47,.65)',   temp:'現在 · 19°C · 多雲',        sound:'環境音：蟬（遠）· 風吹過樹冠'},
-  '暮':{sky:'linear-gradient(180deg,#7E7457,#D9A868)', hillA:'#46503B', hillB:'#333D2C', fog:.2,  star:0,   text:'#FDF6E3', muted:'rgba(253,246,227,.7)', temp:'現在 · 16°C · 風轉強',      sound:'環境音：晚風 · 山雀歸巢'},
-  '夜':{sky:'linear-gradient(180deg,#0E1712,#1C2A20)', hillA:'#101B14', hillB:'#0B120D', fog:.06, star:.85, text:'#E7E2CF', muted:'rgba(231,226,207,.6)', temp:'現在 · 9°C · 晴 · 可見星空', sound:'環境音：蟲鳴 · 貓頭鷹（遠）'}
+  '晨':{sky:'linear-gradient(180deg,#1C3A2C 0%,#4F7461 38%,#9DB8A0 68%,#C9D8C3 100%)', hillA:'#355A43', hillB:'#1B3527', fog:.45, star:0,   temp:'現在 · 14°C · 起霧',        sound:'環境音：霧滴 · 山雀（近）· 風很輕'},
+  '午':{sky:'linear-gradient(180deg,#1F4A33 0%,#4C8061 40%,#9CC4A0 72%,#CFE3C7 100%)', hillA:'#2E5C3F', hillB:'#173323', fog:.14, star:0,   temp:'現在 · 19°C · 多雲',        sound:'環境音：蟬（遠）· 風吹過樹冠'},
+  '暮':{sky:'linear-gradient(180deg,#1A241B 0%,#4B4A31 40%,#A9773F 70%,#D9A868 100%)', hillA:'#2E3A28', hillB:'#18221A', fog:.18, star:0,   temp:'現在 · 16°C · 風轉強',      sound:'環境音：晚風 · 山雀歸巢'},
+  '夜':{sky:'linear-gradient(180deg,#06100B 0%,#0E2118 60%,#173426 100%)',              hillA:'#0D1D14', hillB:'#08130D', fog:.06, star:.85, temp:'現在 · 9°C · 晴 · 可見星空', sound:'環境音：蟲鳴 · 貓頭鷹（遠）'}
 };
 
 var WX_HEADER = {'起霧':'起霧 · 14°C · 有輕柔的微風','下雨':'下雨 · 12°C · 下著細雨','晴朗':'晴朗 · 21°C · 陽光照進了樹冠'};
@@ -172,7 +185,6 @@ function wx(){ return P.weather || '起霧'; }
 function wxLine(){ return WX_LINE[wx()] || ''; }
 function now(){ var d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 function rings(){ return Math.max(0, P.startRings + S.gained - (S.planted?500:0)); }
-function isNight(){ return (S.screen===7 || S.screen===2) && curTod()==='夜'; }
 
 function el(tag, style, text){
   var n = document.createElement(tag);
@@ -184,6 +196,12 @@ function hover(node, hoverStyle, normalStyle){
   node.addEventListener('mouseenter', function(){ node.style.cssText = normalStyle + ';' + hoverStyle; });
   node.addEventListener('mouseleave', function(){ node.style.cssText = normalStyle; });
 }
+function button(style, text, onclick, hoverStyle){
+  var b = el('button', style, text);
+  if(onclick) b.onclick = onclick;
+  if(hoverStyle) hover(b, hoverStyle, style);
+  return b;
+}
 function showToast(msg){
   S.toast = msg;
   var n = document.getElementById('toast');
@@ -192,14 +210,71 @@ function showToast(msg){
 }
 function go(n){ return function(){ setScreen(n); }; }
 
+/* 柏樹線稿：深色背景上直接用（淺色線條）；淺色霧景裡用 filter 壓暗成剪影。
+   原圖右緣的樹枝被裁到，用漸層遮罩讓右邊自然淡出，不會出現一條硬邊 */
+var CYPRESS_MASK = '-webkit-mask-image:linear-gradient(90deg,#000 84%,transparent 100%);mask-image:linear-gradient(90deg,#000 84%,transparent 100%);';
+function cypress(style){
+  var img = document.createElement('img');
+  img.src = 'assets/cypress-line.png'; img.alt = '';
+  img.setAttribute('style','position:absolute;pointer-events:none;' + CYPRESS_MASK + style);
+  img.onerror = function(){ img.style.display = 'none'; };   /* 缺圖時安靜退場 */
+  return img;
+}
+/* 生成的霧中風景：取代照片，沒有授權問題，之後可由真實天氣驅動 */
+function miniScene(h, tags){
+  var s = el('div','position:relative;height:'+h+'px;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#3F6450 0%,#7E9F88 42%,#BFD1BC 68%,#5D7F62 100%)');
+  s.appendChild(el('div','position:absolute;left:-15%;bottom:30%;width:130%;height:38%;background:#4A6C55;opacity:.6;border-radius:50% 50% 0 0'));
+  /* 遠處兩棵在霧後面，淡淡的 */
+  s.appendChild(cypress('left:14%;bottom:12%;height:58%;opacity:.55;filter:brightness(.42)'));
+  s.appendChild(cypress('left:30%;bottom:16%;height:44%;opacity:.4;filter:brightness(.5)'));
+  s.appendChild(el('div','position:absolute;left:0;right:0;bottom:16%;height:44%;background:rgba(236,243,233,.5);filter:blur(16px);animation:th-drift 26s ease-in-out infinite'));
+  /* 近處一棵站在霧前面，看得比較清楚 */
+  s.appendChild(cypress('right:12%;bottom:-4%;height:100%;opacity:.95;filter:brightness(.2) saturate(1.2)'));
+  s.appendChild(el('div','position:absolute;left:-25%;bottom:-22%;width:150%;height:48%;background:#24402F;border-radius:50% 50% 0 0'));
+  s.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,26,18,.18) 0%,rgba(11,26,18,0) 35%,rgba(11,26,18,.45) 100%)'));
+  if(tags && tags.length){
+    var row = el('div','position:absolute;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px');
+    tags.forEach(function(tx){ row.appendChild(el('span', TAG_ON_IMG, tx)); });
+    s.appendChild(row);
+  }
+  return s;
+}
+/* 子頁標題：左邊圓形返回鍵，標題置中 */
+function subHeader(title, sub, onBack, backLabel){
+  var h = el('div','display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0 4px');
+  var back = button(CIRCLE, '‹', onBack || go(1), 'background:rgba(255,255,255,.14)');
+  back.setAttribute('aria-label', backLabel || '回到我的樹');
+  h.appendChild(back);
+  var mid = el('div','flex:1;min-width:0;text-align:center');
+  mid.appendChild(el('div','font-size:21px;font-weight:400;letter-spacing:.5px;color:'+C.text, title));
+  if(sub) mid.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:3px', sub));
+  h.appendChild(mid);
+  h.appendChild(el('div','width:44px;flex-shrink:0'));   /* 讓標題保持置中 */
+  return h;
+}
+/* 分頁主標題：細體大字 */
+function hero(title, sub){
+  var w = el('div','padding-top:8px');
+  w.appendChild(el('div','font-size:38px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text, title));
+  if(sub) w.appendChild(el('div','font-size:13px;color:'+C.text2+';margin-top:10px;line-height:1.65', sub));
+  return w;
+}
+/* 綠光圓盤：讓主角（樹、年輪）站在上面，呼應參考圖帳篷下的發光平台 */
+function glowStage(h){
+  var stage = el('div','position:relative;height:'+h+'px');
+  stage.appendChild(el('div','position:absolute;left:50%;top:46%;width:280px;height:280px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.28) 0%,rgba(123,227,111,0) 66%);animation:th-glow 6s ease-in-out infinite'));
+  stage.appendChild(el('div','position:absolute;left:50%;bottom:24px;width:270px;height:62px;transform:translateX(-50%);border-radius:50%;border:1px solid rgba(123,227,111,.45);background:radial-gradient(ellipse at center,rgba(123,227,111,.22) 0%,rgba(123,227,111,.05) 62%,rgba(123,227,111,0) 76%)'));
+  return stage;
+}
+
 /* ── 樹旁邊的聲音：Web Audio 即時合成，不用錄音檔 ─────────────
    之後可換成 Xeno-canto（只取 CC BY／BY-SA）或 Freesound（CC0／CC BY）的真實錄音 */
 var SND = { ctx:null, out:null, key:null, bus:null, stopScene:null };
 function sndCtx(){
   if(!SND.ctx){
-    var C = window.AudioContext || window.webkitAudioContext;
-    if(!C) return null;
-    SND.ctx = new C();
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return null;
+    SND.ctx = new AC();
     /* 輸出端的壓縮器：聲音疊在一起時不會爆音 */
     SND.out = SND.ctx.createDynamicsCompressor();
     SND.out.threshold.value = -10; SND.out.knee.value = 8; SND.out.ratio.value = 6;
@@ -242,16 +317,16 @@ function sceneFog(ctx, out){
     var t0 = ctx.currentTime + 0.01, f = 1300 + Math.random()*1500, pan = Math.random()*1.6 - 0.8;
     var count = Math.random() < 0.25 ? 2 : 1;
     for(var k=0;k<count;k++){
-      var t = t0 + k*(0.09 + Math.random()*0.05), ff = f * (k ? 0.8 : 1);
+      var tt = t0 + k*(0.09 + Math.random()*0.05), ff = f * (k ? 0.8 : 1);
       var o = ctx.createOscillator(), e = ctx.createGain();
       o.type = 'sine';
-      o.frequency.setValueAtTime(ff, t);
-      o.frequency.exponentialRampToValueAtTime(ff*0.55, t + 0.07);
-      e.gain.setValueAtTime(0.0001, t);
-      e.gain.exponentialRampToValueAtTime((k ? 0.22 : 0.45) * (0.5 + Math.random()*0.5), t + 0.004);
-      e.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+      o.frequency.setValueAtTime(ff, tt);
+      o.frequency.exponentialRampToValueAtTime(ff*0.55, tt + 0.07);
+      e.gain.setValueAtTime(0.0001, tt);
+      e.gain.exponentialRampToValueAtTime((k ? 0.22 : 0.45) * (0.5 + Math.random()*0.5), tt + 0.004);
+      e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.14);
       o.connect(e); toOut(ctx, e, out, pan);
-      o.start(t); o.stop(t + 0.16);
+      o.start(tt); o.stop(tt + 0.16);
     }
     setTimeout(drip, 220 + Math.random()*1100);
   }
@@ -265,10 +340,10 @@ function sceneWind(ctx, out){
   var leaf = noiseLayer(ctx, out, 'pink',  'highpass', 3000, 0, 0.04);
   function gust(){
     if(!alive) return;
-    var now = ctx.currentTime, s = Math.random();
-    wind.gain.gain.setTargetAtTime(0.28 + s*0.72, now, 0.8);
-    wind.filter.frequency.setTargetAtTime(350 + s*700, now, 1.0);
-    leaf.gain.gain.setTargetAtTime(0.02 + s*0.1, now, 0.6);
+    var nowT = ctx.currentTime, s = Math.random();
+    wind.gain.gain.setTargetAtTime(0.28 + s*0.72, nowT, 0.8);
+    wind.filter.frequency.setTargetAtTime(350 + s*700, nowT, 1.0);
+    leaf.gain.gain.setTargetAtTime(0.02 + s*0.1, nowT, 0.6);
     setTimeout(gust, 1400 + Math.random()*2600);
   }
   gust();
@@ -277,24 +352,24 @@ function sceneWind(ctx, out){
 /* 山雀：遠遠的林間底噪，加上兩音一組、重複幾次的叫聲，從不同方向傳來 */
 function sceneBirds(ctx, out){
   var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 700, 0, 0.18);
-  function note(t, f0, f1, dur, vol, pan){
+  function note(tt, f0, f1, dur, vol, pan){
     var o = ctx.createOscillator(), e = ctx.createGain();
     o.type = 'sine';
-    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
-    e.gain.setValueAtTime(0.0001, t);
-    e.gain.exponentialRampToValueAtTime(vol, t + 0.012);
-    e.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.frequency.setValueAtTime(f0, tt); o.frequency.exponentialRampToValueAtTime(f1, tt + dur);
+    e.gain.setValueAtTime(0.0001, tt);
+    e.gain.exponentialRampToValueAtTime(vol, tt + 0.012);
+    e.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
     o.connect(e); toOut(ctx, e, out, pan);
-    o.start(t); o.stop(t + dur + 0.02);
+    o.start(tt); o.stop(tt + dur + 0.02);
   }
   function phrase(){
     if(!alive) return;
-    var t = ctx.currentTime + 0.05, pan = Math.random()*1.4 - 0.7, vol = 0.2 + Math.random()*0.15;
+    var tt = ctx.currentTime + 0.05, pan = Math.random()*1.4 - 0.7, vol = 0.2 + Math.random()*0.15;
     var base = 4200 + Math.random()*900, reps = 2 + Math.floor(Math.random()*3);
     for(var r=0;r<reps;r++){
-      note(t,        base*1.15, base,      0.07, vol,      pan);
-      note(t + 0.11, base*0.78, base*0.7,  0.09, vol*0.85, pan);
-      t += 0.28;
+      note(tt,        base*1.15, base,      0.07, vol,      pan);
+      note(tt + 0.11, base*0.78, base*0.7,  0.09, vol*0.85, pan);
+      tt += 0.28;
     }
     setTimeout(phrase, reps*280 + 1200 + Math.random()*3200);
   }
@@ -314,35 +389,35 @@ function playSound(key){
 }
 function stopSound(){
   if(!SND.key) return;
-  var ctx = SND.ctx, bus = SND.bus, stop = SND.stopScene, now = ctx.currentTime;
+  var ctx = SND.ctx, bus = SND.bus, stop = SND.stopScene, nowT = ctx.currentTime;
   SND.key = null; SND.bus = null; SND.stopScene = null;
-  bus.gain.cancelScheduledValues(now);
-  bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), now);
-  bus.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+  bus.gain.cancelScheduledValues(nowT);
+  bus.gain.setValueAtTime(Math.max(bus.gain.value, 0.0001), nowT);
+  bus.gain.exponentialRampToValueAtTime(0.0001, nowT + 0.4);
   setTimeout(function(){ stop(); try{ bus.disconnect(); }catch(e){} }, 450);
 }
 function toggleSound(key){ if(SND.key === key) stopSound(); else playSound(key); }
 
 /* ── 對話 ───────────────────────────────────────────────── */
 function msgNode(m){
-  if(m.isNote) return el('div','align-self:center;font-size:11px;color:#A29B7E;padding:2px 0', m.text);
+  if(m.isNote) return el('div','align-self:center;font-size:11px;color:'+C.text3+';padding:2px 0', m.text);
 
   var wrap, bub;
   if(m.isTree){
-    wrap = el('div','max-width:82%;align-self:flex-start');
-    bub  = el('div','background:#FBF8EE;border:1px solid #EDE5CB;border-radius:4px 18px 18px 18px;padding:12px 15px;font-family:\'Noto Serif TC\',serif;font-size:15.5px;line-height:1.8;color:#3A4634;box-shadow:0 0 0 3px rgba(201,138,61,0.05)', m.text);
+    wrap = el('div','max-width:84%;align-self:flex-start');
+    bub  = el('div', GLASS + ';border-radius:6px 22px 22px 22px;padding:13px 16px;font-size:15px;line-height:1.75;color:'+C.text, m.text);
     if(m.hasImg){
-      var ph = el('div','margin-top:10px;height:120px;border-radius:12px;background:repeating-linear-gradient(-45deg,#DFE5D6,#DFE5D6 10px,#D4DCC9 10px,#D4DCC9 20px);display:flex;align-items:center;justify-content:center');
-      ph.appendChild(el('span','font-family:ui-monospace,monospace;font-size:10.5px;color:#6B7A63;background:rgba(251,248,238,.85);padding:3px 9px;border-radius:6px','今晨 06:10 · 山上起霧即時影像'));
-      bub.appendChild(ph);
+      var sc = miniScene(132, ['今晨 06:10 · 山上起霧即時影像']);
+      sc.style.marginTop = '12px';
+      bub.appendChild(sc);
     }
     wrap.appendChild(bub);
-    wrap.appendChild(el('div','font-size:10.5px;color:#B0A98C;margin-top:5px;padding-left:4px', m.time));
+    wrap.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:6px;padding-left:6px', m.time));
   } else {
     wrap = el('div','max-width:78%;align-self:flex-end');
-    bub  = el('div','background:#4E6B4A;color:#F5F1E4;border-radius:18px 4px 18px 18px;padding:11px 15px;font-size:14px;line-height:1.7', m.text);
+    bub  = el('div','background:#fff;color:'+C.ink+';border-radius:22px 6px 22px 22px;padding:12px 16px;font-size:14.5px;line-height:1.7', m.text);
     wrap.appendChild(bub);
-    wrap.appendChild(el('div','font-size:10.5px;color:#B0A98C;margin-top:5px;text-align:right;padding-right:4px', m.time));
+    wrap.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:6px;text-align:right;padding-right:6px', m.time));
   }
   return wrap;
 }
@@ -359,10 +434,10 @@ function setThinking(on){
   S.thinking = on;
   if(S.screen!==1 || !ui.chat) return;
   if(on && !ui.thinkNode){
-    var n = el('div','align-self:flex-start;display:flex;align-items:center;gap:8px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:4px 18px 18px 18px;padding:10px 15px');
-    n.appendChild(el('span','font-family:\'Noto Serif TC\',serif;font-size:13px;color:#8A8468','阿檜在想'));
-    var dots = el('span','display:flex;gap:3px');
-    [0,.3,.6].forEach(function(d){ dots.appendChild(el('span','width:4px;height:4px;border-radius:50%;background:#4E6B4A;animation:th-dots 1.8s '+d+'s infinite')); });
+    var n = el('div','align-self:flex-start;display:flex;align-items:center;gap:9px;border-radius:6px 22px 22px 22px;padding:11px 16px;' + GLASS);
+    n.appendChild(el('span','font-size:13px;color:'+C.text2,'阿檜在想'));
+    var dots = el('span','display:flex;gap:4px');
+    [0,.3,.6].forEach(function(d){ dots.appendChild(el('span','width:5px;height:5px;border-radius:50%;background:'+C.lime+';animation:th-dots 1.8s '+d+'s infinite')); });
     n.appendChild(dots);
     ui.chat.appendChild(n); ui.thinkNode = n; scrollChat();
   } else if(!on && ui.thinkNode){
@@ -413,25 +488,29 @@ function paintBreath(){
   ui.bFill.style.transition = S.breathing ? ('width '+S.bDur+'s linear') : 'width .6s ease';
   ui.bFill.style.width    = pct + '%';
 }
-function stepB(i){
-  if(!br) return;
+/* 每按一次開始／停下來就換一個編號：上一輪還沒觸發的計時器發現編號不對就結束，
+   避免「停下來」後馬上「開始」時，兩條呼吸節奏同時在跑 */
+var breathGen = 0;
+function stepB(i, gen){
+  if(!br || gen !== breathGen) return;
   if(i === PHASES.length){
     S.cycles++; S.gained++;
     if(S.cycles >= BREATH_ROUNDS){
       br=false; S.breathing=false; S.bDone=true; S.phase=''; S.bScale=1; S.bDur=1.4;
       paintBreath();
     } else {
-      stepB(0);
+      stepB(0, gen);
     }
     return;
   }
   S.bIdx = i; S.phase = PHASES[i][0]; S.bDur = PHASES[i][1]; S.bScale = PHASES[i][2];
   paintBreath();
-  t(function(){ stepB(i+1); }, PHASES[i][1]*1000);
+  t(function(){ stepB(i+1, gen); }, PHASES[i][1]*1000);
 }
 function toggleBreath(){
+  breathGen++;
   if(br){ br=false; S.breathing=false; S.phase=''; S.bScale=1; S.bDur=1; S.cycles=0; paintBreath(); return; }
-  br = true; S.breathing = true; S.bDone = false; S.cycles = 0; stepB(0);
+  br = true; S.breathing = true; S.bDone = false; S.cycles = 0; stepB(0, breathGen);
 }
 
 /* ── 年輪 SVG（有機同心圓，一次生成後沿用）──────────────── */
@@ -462,7 +541,7 @@ function ringSvg(){
     var delay = (0.2+i*0.5).toFixed(2);
     var op    = (0.5+rnd(i*37+11)*0.4).toFixed(2);
     var rot   = 'rotate('+Math.round(rnd(i*41+12)*360)+' 105 105)';
-    out += '<path d="'+d+'Z" pathLength="100" fill="none" stroke="#4E6B4A" stroke-width="'+sw+'" stroke-linecap="round" transform="'+rot+'" '
+    out += '<path d="'+d+'Z" pathLength="100" fill="none" stroke="#A5EA98" stroke-width="'+sw+'" stroke-linecap="round" transform="'+rot+'" '
         +  'style="stroke-dasharray:100 100;animation:th-draw '+dur+'s cubic-bezier(.5,.1,.4,1) '+delay+'s both;opacity:'+op+'"/>';
   }
   ringSvgCache = out + '</svg>';
@@ -485,43 +564,52 @@ function ringStage(){
 
 /* ── 畫面 ───────────────────────────────────────────────── */
 function screen1(){
-  var root = el('div','flex:1;display:flex;flex-direction:column;min-height:0;padding-top:62px');
+  var root = el('div','flex:1;display:flex;flex-direction:column;min-height:0;padding-top:58px');
   root.setAttribute('data-screen-label','1 說說話');
 
-  var head = el('div','padding:8px 18px 12px;border-bottom:1px solid #E9E2CC;display:flex;align-items:center;gap:12px');
-  head.appendChild(el('div','width:10px;height:10px;border-radius:50%;background:#4E6B4A;animation:th-pulse 4s ease-in-out infinite'));
+  /* 頭像＋名字，像參考圖首頁的「Hi, Sharry / Welcome Back」 */
+  var head = el('div','padding:6px 18px 14px;display:flex;align-items:center;gap:12px');
+  var av = el('div','position:relative;width:54px;height:54px;flex-shrink:0');
+  var avIn = el('div','position:relative;width:54px;height:54px;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 30%,#4E8A62,#1D4330);border:1px solid rgba(255,255,255,.22)');
+  avIn.appendChild(cypress('left:50%;top:10%;height:118%;transform:translateX(-50%)'));
+  av.appendChild(avIn);
+  av.appendChild(el('span','position:absolute;right:1px;bottom:2px;width:12px;height:12px;border-radius:50%;background:'+C.lime+';border:2px solid #17351F;animation:th-pulse 4s ease-in-out infinite'));
+  head.appendChild(av);
   var hm = el('div','flex:1;min-width:0');
-  var nm = el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;font-weight:600;color:#31472F');
-  nm.appendChild(document.createTextNode('阿檜 '));
-  nm.appendChild(el('span','font-family:\'PingFang TC\',\'Noto Sans TC\',sans-serif;font-size:12px;font-weight:400;color:#8A8468','巨木群棧道 28 號 · 1,095 歲'));
-  hm.appendChild(nm);
-  hm.appendChild(el('div','font-size:11.5px;color:#8A8468;margin-top:2px', WX_HEADER[wx()]));
+  hm.appendChild(el('div','font-size:22px;font-weight:500;line-height:1.25;color:'+C.text,'阿檜'));
+  hm.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis','巨木群棧道 28 號 · 1,095 歲'));
+  hm.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:1px', WX_HEADER[wx()]));
   head.appendChild(hm);
-  var meBtn = el('button','width:32px;height:32px;border-radius:50%;border:1px solid #E0D8BE;background:#FBF8EE;color:#4E6B4A;font-size:12px;cursor:pointer;font-family:inherit','我');
-  meBtn.onclick = go(5); head.appendChild(meBtn);
+  var meBtn = button(CIRCLE + ';font-size:13px;padding:0', '我', go(5), 'background:rgba(255,255,255,.14)');
+  meBtn.setAttribute('aria-label','我');
+  head.appendChild(meBtn);
   root.appendChild(head);
 
-  var quick = el('div','padding:10px 18px 0;display:flex;gap:8px');
-  var qStyle = 'flex:1;padding:8px 10px;border-radius:12px;border:1px solid #E0D8BE;background:#FBF8EE;color:#4E6B4A;font-size:12px;cursor:pointer;font-family:inherit';
-  var q1 = el('button', qStyle, '☰ 今天的晨報'); q1.onclick = go(2);
-  var q2 = el('button', qStyle, '樹的邀請');     q2.onclick = go(4);
-  quick.appendChild(q1); quick.appendChild(q2);
+  var quick = el('div','padding:0 18px;display:flex;gap:8px');
+  var qs = 'flex:1;padding:11px 12px;border-radius:999px;color:'+C.text+';font-size:13px;cursor:pointer;' + GLASS;
+  quick.appendChild(button(qs, '今天的晨報', go(2), 'background:rgba(255,255,255,.14)'));
+  quick.appendChild(button(qs, '樹的邀請',   go(4), 'background:rgba(255,255,255,.14)'));
   root.appendChild(quick);
 
-  var chat = el('div','flex:1;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:12px;min-height:0');
+  var chat = el('div','flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0');
   S.messages.forEach(function(m){ chat.appendChild(msgNode(m)); });
   root.appendChild(chat);
   ui.chat = chat; ui.thinkNode = null;
   if(S.thinking){ S.thinking = false; setThinking(true); }
 
-  var bar = el('div','padding:0 18px 10px;display:flex;flex-direction:column;gap:8px');
-  var row = el('div','display:flex;gap:8px;align-items:center;background:#FDFBF3;border:1px solid #E5DEC5;border-radius:999px;padding:5px 6px 5px 16px');
+  /* 輸入列：像參考圖的搜尋框，右邊白色圓鈕 */
+  var bar = el('div','padding:0 16px 96px');
+  var rowStyle = 'display:flex;gap:8px;align-items:center;border-radius:999px;padding:6px 6px 6px 18px;' + GLASS;
+  var row = el('div', rowStyle);
   var input = document.createElement('input');
-  input.setAttribute('style','flex:1;border:none;outline:none;background:transparent;font-size:14px;color:#3A4634;font-family:inherit;min-width:0');
+  input.setAttribute('style','flex:1;border:none;outline:none;background:transparent;font-size:14.5px;color:'+C.text+';min-width:0;padding:8px 0');
   input.placeholder = '想跟我說點什麼？';
+  input.setAttribute('aria-label','想跟我說點什麼？');
   input.addEventListener('keydown', function(e){ if(e.key === 'Enter') send(); });
-  var sendBtn = el('button','width:30px;height:30px;border-radius:50%;border:none;background:#4E6B4A;color:#F5F1E4;font-size:14px;cursor:pointer;flex-shrink:0','↑');
-  sendBtn.onclick = function(){ send(); };
+  input.addEventListener('focus', function(){ row.style.borderColor = 'rgba(123,227,111,.55)'; });
+  input.addEventListener('blur',  function(){ row.style.borderColor = 'rgba(255,255,255,.13)'; });
+  var sendBtn = button('width:40px;height:40px;border-radius:50%;border:none;background:#fff;color:'+C.ink+';font-size:17px;font-weight:600;cursor:pointer;flex-shrink:0', '↑', function(){ send(); });
+  sendBtn.setAttribute('aria-label','送出');
   row.appendChild(input); row.appendChild(sendBtn); bar.appendChild(row); root.appendChild(bar);
   ui.input = input;
 
@@ -530,59 +618,52 @@ function screen1(){
 }
 
 function screen2(){
-  var root = el('div','flex:1;overflow-y:auto;padding:62px 0 8px;min-height:0');
+  var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','2 樹的日常');
+  root.appendChild(subHeader('樹的日常', '8月2日 · 06:12 送達'));
 
-  var head = el('div','padding:8px 18px 4px;display:flex;align-items:baseline;gap:10px');
-  var back = el('button','border:none;background:none;color:#4E6B4A;font-size:13px;cursor:pointer;padding:0;font-family:inherit;white-space:nowrap;flex-shrink:0','‹ 我的樹');
-  back.onclick = go(1); head.appendChild(back);
-  head.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:20px;font-weight:600;color:#31472F','樹的日常'));
-  head.appendChild(el('div','font-size:11.5px;color:#8A8468;white-space:nowrap','8月2日 · 06:12 送達'));
-  root.appendChild(head);
-
-  var card = el('div','margin:12px 18px 0;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:18px 20px');
-  var meta = el('div','font-size:11.5px;color:#8A8468;display:flex;justify-content:space-between;white-space:nowrap;gap:8px;margin-bottom:12px');
-  meta.appendChild(el('span', null, WX_HEADER[wx()]));
-  meta.appendChild(el('span', null, '日出 05:31'));
-  card.appendChild(meta);
-  var body = el('div','font-family:\'Noto Serif TC\',serif;font-size:15.5px;line-height:1.9;color:#3A4634');
+  var card = el('div', CARD + ';margin-top:18px;padding:10px 10px 12px');
+  card.appendChild(miniScene(180, [WX_HEADER[wx()], '日出 05:31']));
+  var body = el('div','padding:18px 10px 4px;font-size:15.5px;line-height:1.85;color:'+C.text);
   body.innerHTML = '早安。霧在天亮前就上來了，山雀比平常晚了十分鐘才叫。我數了一下，昨晚一共落了三片葉子。<br><br>你今天好嗎？如果有時間，我們一起來練習五分鐘的呼吸。';
   card.appendChild(body);
-  var goBtnStyle = 'margin-top:14px;padding:8px 16px;border-radius:999px;border:1px solid #C98A3D;background:none;color:#A96F28;font-size:12.5px;cursor:pointer;font-family:inherit';
-  var goBtn = el('button', goBtnStyle, '我準備好了 →');
-  goBtn.onclick = go(4); hover(goBtn,'background:rgba(201,138,61,.08)', goBtnStyle);
-  card.appendChild(goBtn);
+  var foot = el('div','padding:14px 2px 0');
+  foot.appendChild(button(BTN_PRIMARY, '我準備好了 →', go(4), 'background:#E7F1E4'));
+  card.appendChild(foot);
   root.appendChild(card);
 
-  root.appendChild(el('div','margin:14px 18px 0;font-size:11px;color:#A29B7E;text-align:center','晨報永遠跟日出一起送達 · 可在「我」裡調整時間'));
+  root.appendChild(el('div','margin-top:16px;font-size:11px;color:'+C.text3+';text-align:center','晨報永遠跟日出一起送達 · 可在「我」裡調整時間'));
   return root;
 }
 
 function screen3(){
-  var root = el('div','flex:1;overflow-y:auto;padding:62px 18px 8px;min-height:0;box-sizing:border-box');
+  var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','3 找樹洞');
-  root.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:22px;font-weight:600;color:#31472F;padding-top:8px','森林'));
-  root.appendChild(el('div','font-size:12.5px;color:#8A8468;margin-top:4px','按照現在的心情，為你推薦樹洞。'));
 
   if(!S.matched){
+    root.appendChild(hero('森林', '按照現在的心情，為你推薦樹洞。'));
     var q = quizAt(S.quizStep) || QUIZ[0];
-    var card = el('div','margin-top:16px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:22px 20px');
-    card.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A96F28;margin-bottom:14px','讓心情帶路'));
-    var dotsRow = el('div','display:flex;align-items:center;justify-content:space-between;margin-bottom:16px');
+    var card = el('div', CARD + ';margin-top:22px;padding:22px 18px 18px');
+    var top = el('div','display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:18px');
+    var left = el('div');
+    left.appendChild(el('div', EYEBROW + ';margin-bottom:10px', '讓心情帶路'));
     var dots = el('div','display:flex;gap:6px');
-    [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:24px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?'#4E6B4A':'#E0D8BE'))); });
-    dotsRow.appendChild(dots);
+    [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:26px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?C.lime:'rgba(255,255,255,.18)'))); });
+    left.appendChild(dots);
+    top.appendChild(left);
     if(S.quizStep > 0){
-      var prev = el('button','border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;padding:0;white-space:nowrap','‹ 上一步');
-      prev.onclick = function(){ stopSound(); S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); };
-      dotsRow.appendChild(prev);
+      top.appendChild(button(PILL_SMALL, '‹ 上一步', function(){ stopSound(); S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); }, 'background:rgba(255,255,255,.12)'));
     }
-    card.appendChild(dotsRow);
-    card.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;color:#31472F;line-height:1.6', q.title));
+    card.appendChild(top);
+    card.appendChild(el('div','font-size:19px;font-weight:400;line-height:1.5;color:'+C.text, q.title));
     var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
     q.opts.forEach(function(o){
-      var st = 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
-      var b = el('button', st, o.label);
+      var st = 'display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 16px 14px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:'+C.text+';font-size:14.5px;cursor:pointer;text-align:left';
+      var b = el('button', st);
+      b.appendChild(el('span', null, o.label));
+      var arrow = el('span','color:'+C.text3+';font-size:14px;flex-shrink:0','↗');
+      arrow.setAttribute('aria-hidden','true');
+      b.appendChild(arrow);
       b.onclick = function(){
         S.quizPick[S.quizStep] = o;
         if(S.quizStep < 2){ S.quizStep++; }
@@ -593,89 +674,94 @@ function screen3(){
         }
         renderScreen();
       };
-      hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
+      hover(b,'background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.24)', st);
       opts.appendChild(b);
     });
     card.appendChild(opts);
     root.appendChild(card);
 
-    root.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A29B7E;margin:20px 0 10px','或者，直接走進一座林'));
-    var fw = el('div','display:flex;flex-wrap:wrap;gap:7px');
+    root.appendChild(el('div','font-size:11px;letter-spacing:2.5px;color:'+C.text3+';margin:24px 2px 12px','或者，直接走進一座林'));
+    var fw = el('div','display:flex;flex-wrap:wrap;gap:8px');
     FORESTS.forEach(function(f){
-      var st = 'padding:6px 12px;border-radius:999px;border:1px solid #E0D8BE;background:#F5F1E4;font-size:11.5px;color:#6B6A50;white-space:nowrap;cursor:pointer;font-family:inherit';
-      var b = el('button', st, f.label);
-      b.onclick = function(){ stopSound(); S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); };
-      hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
-      fw.appendChild(b);
+      var st = 'padding:9px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);font-size:12.5px;color:'+C.text2+';white-space:nowrap;cursor:pointer';
+      fw.appendChild(button(st, f.label, function(){ stopSound(); S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); }, 'background:rgba(255,255,255,.13);color:'+C.text));
     });
     root.appendChild(fw);
   } else {
+    /* 結果頁：像參考圖的「Tent Details」——樹站在綠光圓盤上，下面是資訊卡 */
     var m = S.matched;
-    var c = el('div','margin-top:22px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:24px 20px;text-align:center');
-    c.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A96F28','為你找到的樹洞'));
-    c.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:26px;font-weight:600;color:#31472F;margin-top:10px', m.name));
-    c.appendChild(el('div','font-size:12.5px;color:#8A8468;margin-top:6px', m.meta));
-    c.appendChild(el('div','display:inline-block;margin-top:10px;padding:4px 12px;border-radius:999px;border:1px solid #E0D8BE;font-size:11.5px;color:#6B6A50;white-space:nowrap','住在'+m.forest));
-    /* 從聲音那條路來的：繼續播剛剛選的聲音，可以停 */
+    var reset = function(){ stopSound(); S.matched = null; S.quizStep = 0; S.quizPick = []; renderScreen(); };
+    if(S.matchedVia === 'quiz'){
+      root.appendChild(subHeader('為你找到的樹洞', null, function(){ stopSound(); S.matched = null; S.quizPick.length = 2; renderScreen(); }, '上一步'));
+    } else {
+      root.appendChild(subHeader('為你找到的樹洞', null, reset, '回到森林'));
+    }
+
+    var stage = glowStage(262);
+    stage.appendChild(cypress('left:50%;bottom:48px;height:206px;transform:translateX(-50%);filter:drop-shadow(0 0 18px rgba(123,227,111,.5))'));
+    if(m.num) stage.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:46px;height:46px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 0 24px rgba(123,227,111,.6)', m.num));
+    root.appendChild(stage);
+
+    var parts = m.meta.split(' · ');
+    var age = parts.filter(function(p){ return p.indexOf('歲') >= 0; })[0] || '';
+    var tags = el('div','display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:6px');
+    parts.forEach(function(p){ if(p !== age) tags.appendChild(el('span', TAG, p)); });
+    root.appendChild(tags);
+
+    var info = el('div', CARD + ';margin-top:16px;padding:20px 18px 18px');
+    var row1 = el('div','display:flex;align-items:baseline;justify-content:space-between;gap:10px');
+    row1.appendChild(el('div','font-size:27px;font-weight:500;color:'+C.text, m.name));
+    if(age) row1.appendChild(el('div','font-size:18px;font-weight:400;color:'+C.text+';white-space:nowrap', age));
+    info.appendChild(row1);
+    info.appendChild(el('div','font-size:12.5px;color:'+C.lime+';margin-top:6px','住在'+m.forest));
+
+    /* 從聲音那條路來的：樹洞揭曉時播剛剛選的聲音，可以停 */
     var picked = S.matchedVia === 'quiz' && S.quizPick[2] && S.quizPick[2].sound ? S.quizPick[2] : null;
     if(picked){
       var on = SND.key === picked.sound;
-      var sb = el('button','display:flex;align-items:center;justify-content:center;gap:6px;margin:12px auto 0;padding:6px 14px;border-radius:999px;border:1px solid '+(on?'#4E6B4A':'#E0D8BE')+';background:'+(on?'rgba(78,107,74,.08)':'none')+';color:#4E6B4A;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap', (on ? '❚❚  ' : '▶  ') + picked.label);
+      var sst = 'display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:9px 15px;border-radius:999px;border:1px solid '+(on?'rgba(123,227,111,.55)':'rgba(255,255,255,.14)')+';background:'+(on?'rgba(123,227,111,.14)':'rgba(255,255,255,.06)')+';color:'+C.text+';font-size:12.5px;cursor:pointer;white-space:nowrap';
+      var sb = button(sst, (on ? '❚❚  ' : '▶  ') + picked.label, function(){ toggleSound(picked.sound); renderScreen(); });
       sb.setAttribute('aria-label', (on ? '停止：' : '播放：') + picked.label);
-      sb.onclick = function(){ toggleSound(picked.sound); renderScreen(); };
-      c.appendChild(sb);
+      info.appendChild(sb);
     }
-    c.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:14px;line-height:1.9;color:#3A4634;margin-top:14px;text-align:left', m.line));
-    var st = 'margin-top:18px;width:100%;padding:12px;border-radius:999px;border:none;background:#4E6B4A;color:#F5F1E4;font-size:14px;cursor:pointer;font-family:inherit';
-    var b1 = el('button', st, '跟它說第一句話'); b1.onclick = go(1); hover(b1,'background:#43573F', st);
-    c.appendChild(b1);
-    var links = el('div','display:flex;justify-content:center;gap:18px;margin-top:8px');
-    var lst = 'border:none;background:none;color:#8A8468;font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;padding:0';
-    if(S.matchedVia === 'quiz'){
-      var b3 = el('button', lst, '‹ 上一步');
-      b3.onclick = function(){ stopSound(); S.matched = null; S.quizPick.length = 2; renderScreen(); };   /* 回到第三題，前兩題的答案保留 */
-      links.appendChild(b3);
-    }
-    var b2 = el('button', lst, '重新配對');
-    b2.onclick = function(){ stopSound(); S.matched = null; S.quizStep = 0; S.quizPick = []; renderScreen(); };
-    links.appendChild(b2);
-    c.appendChild(links);
-    root.appendChild(c);
+    info.appendChild(el('div','font-size:15px;line-height:1.8;color:rgba(242,246,240,.86);margin-top:14px', m.line));
+
+    var btns = el('div','display:flex;gap:10px;margin-top:18px');
+    btns.appendChild(button(BTN_GLASS + ';flex:1', '重新配對', reset, 'background:rgba(255,255,255,.14)'));
+    btns.appendChild(button(BTN_PRIMARY + ';flex:1.4', '跟它說第一句話', go(1), 'background:#E7F1E4'));
+    info.appendChild(btns);
+    root.appendChild(info);
   }
   return root;
 }
 
 function screen4(){
-  var root = el('div','flex:1;overflow-y:auto;padding:62px 18px 8px;min-height:0;box-sizing:border-box');
+  var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','4 樹的邀請');
+  root.appendChild(subHeader('樹的邀請'));
 
-  var head = el('div','display:flex;align-items:baseline;gap:10px;padding-top:8px');
-  var back = el('button','border:none;background:none;color:#4E6B4A;font-size:13px;cursor:pointer;padding:0;font-family:inherit;white-space:nowrap;flex-shrink:0','‹ 我的樹');
-  back.onclick = go(1); head.appendChild(back);
-  head.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:20px;font-weight:600;color:#31472F','樹的邀請'));
-  root.appendChild(head);
-
-  var inv = el('div','margin-top:14px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:18px 20px');
-  inv.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A96F28','出門走走'));
-  inv.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:15.5px;line-height:1.9;color:#3A4634;margin-top:8px','這週末，來看我嗎？不用帶什麼，山上什麼都有。'));
-  inv.appendChild(el('div','font-size:11.5px;color:#8A8468;margin-top:10px','阿里山 巨木群棧道 · 步行 40 分 · 週六多雲 18°C'));
+  var inv = el('div', CARD + ';margin-top:18px;padding:10px 10px 18px');
+  inv.appendChild(miniScene(150, ['阿里山 巨木群棧道', '步行 40 分', '週六多雲 18°C']));
+  var invBody = el('div','padding:16px 10px 0');
+  invBody.appendChild(el('div', EYEBROW, '出門走走'));
+  invBody.appendChild(el('div','font-size:17px;line-height:1.75;color:'+C.text+';margin-top:8px','這週末，來看我嗎？不用帶什麼，山上什麼都有。'));
+  inv.appendChild(invBody);
   root.appendChild(inv);
 
-  var bcard = el('div','margin-top:14px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:18px;padding:22px 20px;display:flex;flex-direction:column;align-items:center');
-  bcard.appendChild(el('div','font-size:12.5px;color:#8A8468;align-self:flex-start','或者，現在跟我呼吸五次就好。'));
-  var holder = el('div','height:190px;display:flex;align-items:center;justify-content:center');
-  var circle = el('div','width:130px;height:130px;border-radius:50%;background:radial-gradient(circle,rgba(78,107,74,.22),rgba(78,107,74,.08));border:1px solid rgba(78,107,74,.35);display:flex;align-items:center;justify-content:center');
-  var label = el('span','font-family:\'Noto Serif TC\',serif;font-size:16px;color:#31472F','跟我呼吸');
+  var bcard = el('div', CARD + ';margin-top:14px;padding:22px 20px 20px;display:flex;flex-direction:column;align-items:center');
+  bcard.appendChild(el('div','font-size:13px;color:'+C.text2+';align-self:flex-start','或者，現在跟我呼吸五次就好。'));
+  var holder = el('div','height:210px;display:flex;align-items:center;justify-content:center');
+  var circle = el('div','width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 50% 38%,rgba(123,227,111,.55) 0%,rgba(46,120,70,.38) 55%,rgba(20,60,38,.25) 100%);border:1px solid rgba(255,255,255,.18);box-shadow:0 0 60px rgba(123,227,111,.32);display:flex;align-items:center;justify-content:center');
+  var label = el('span','font-size:17px;color:'+C.text,'跟我呼吸');
   circle.appendChild(label); holder.appendChild(circle); bcard.appendChild(holder);
   /* 進度條：讓人知道快結束了，不是計分；閒置時隱藏 */
-  var bar  = el('div','width:130px;height:3px;border-radius:2px;background:rgba(78,107,74,.16);overflow:hidden;opacity:0;transition:opacity .6s;margin:0 0 16px');
-  var fill = el('div','height:100%;width:0%;background:#4E6B4A;border-radius:2px');
+  var bar  = el('div','width:150px;height:3px;border-radius:2px;background:rgba(255,255,255,.15);overflow:hidden;opacity:0;transition:opacity .6s;margin:0 0 18px');
+  var fill = el('div','height:100%;width:0%;background:'+C.lime+';border-radius:2px');
   bar.appendChild(fill); bcard.appendChild(bar);
-  var bst = 'padding:10px 26px;border-radius:999px;border:none;background:#4E6B4A;color:#F5F1E4;font-size:13.5px;cursor:pointer;font-family:inherit';
-  var btn = el('button', bst, '開始');
-  btn.onclick = toggleBreath; hover(btn,'background:#43573F', bst);
+  var bst = 'padding:13px 36px;border-radius:999px;border:none;background:#fff;color:'+C.ink+';font-size:14.5px;font-weight:500;cursor:pointer';
+  var btn = button(bst, '開始', toggleBreath, 'background:#E7F1E4');
   bcard.appendChild(btn);
-  var note = el('div','font-size:12.5px;color:#8A8468;margin-top:12px;min-height:19px','');
+  var note = el('div','font-size:12.5px;color:'+C.text2+';margin-top:12px;min-height:19px','');
   bcard.appendChild(note);
   root.appendChild(bcard);
 
@@ -685,98 +771,83 @@ function screen4(){
 }
 
 function screen5(){
-  var root = el('div','flex:1;overflow-y:auto;padding:62px 18px 8px;min-height:0;box-sizing:border-box');
+  var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','5 分享');
+  root.appendChild(subHeader('分享'));
 
-  var head = el('div','display:flex;align-items:baseline;gap:10px;padding-top:8px');
-  var back = el('button','border:none;background:none;color:#4E6B4A;font-size:13px;cursor:pointer;padding:0;font-family:inherit;white-space:nowrap;flex-shrink:0','‹ 我的樹');
-  back.onclick = go(1); head.appendChild(back);
-  head.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:20px;font-weight:600;color:#31472F','分享'));
-  root.appendChild(head);
-
-  var card = el('div','margin:16px auto 0;max-width:290px;background:linear-gradient(180deg,#31472F,#25381F);border-radius:20px;padding:26px 24px;position:relative;overflow:hidden');
-  card.appendChild(el('div','position:absolute;left:-30%;bottom:-8px;width:160%;height:90px;background:#22321C;border-radius:50% 50% 0 0'));
-  card.appendChild(el('div','position:absolute;left:10%;bottom:-20px;width:140%;height:70px;background:#1A281A;border-radius:50% 50% 0 0'));
-  var img = document.createElement('img');
-  img.src = 'assets/cypress-line.png'; img.alt = '';
-  img.setAttribute('style','position:absolute;right:-14px;bottom:-13%;height:110%;opacity:.55;pointer-events:none');
-  img.onerror = function(){ img.style.display = 'none'; };   /* 缺圖時安靜退場，卡片仍完整 */
-  card.appendChild(img);
-  var inner = el('div','position:relative');
-  inner.appendChild(el('div','font-size:10px;letter-spacing:3px;color:rgba(245,241,228,.5)','樹洞 · 真的樹，真的聽'));
-  var quote = el('div','font-family:\'Noto Serif TC\',serif;font-size:24px;line-height:1.5;color:#F5F1E4;margin-top:44px');
-  quote.innerHTML = '這棵樹<br>陪我 47 天了';
+  /* 分享卡：像參考圖的開場畫面——深林、細體＋粗體的大字 */
+  var card = el('div','position:relative;overflow:hidden;margin:18px auto 0;max-width:300px;height:380px;border-radius:32px;padding:26px 24px;border:1px solid rgba(255,255,255,.14);background:radial-gradient(90% 55% at 72% 22%,rgba(123,227,111,.26) 0%,rgba(123,227,111,0) 70%),linear-gradient(170deg,#1F4A30 0%,#0E2116 78%)');
+  card.appendChild(cypress('right:-8px;bottom:-3%;height:94%;opacity:.5'));
+  card.appendChild(el('div','position:absolute;left:-30%;bottom:-14px;width:160%;height:96px;background:#11281A;border-radius:50% 50% 0 0'));
+  card.appendChild(el('div','position:absolute;left:10%;bottom:-26px;width:140%;height:72px;background:#0A1A10;border-radius:50% 50% 0 0'));
+  var inner = el('div','position:relative;height:100%;display:flex;flex-direction:column');
+  inner.appendChild(el('div','font-size:10px;letter-spacing:3px;color:'+C.text3,'樹洞 · 真的樹，真的聽'));
+  var quote = el('div','font-size:36px;line-height:1.18;color:'+C.text+';margin-top:auto');
+  quote.appendChild(el('span','font-weight:300','這棵樹'));
+  quote.appendChild(document.createElement('br'));
+  quote.appendChild(el('span','font-weight:600','陪我 47 天了'));
   inner.appendChild(quote);
-  inner.appendChild(el('div','font-size:12px;color:rgba(245,241,228,.7);margin-top:12px','阿檜 · 巨木群棧道 28 號 · 1,095 歲'));
-  inner.appendChild(el('div','font-size:10.5px;color:rgba(245,241,228,.45);margin-top:34px','點開，看它此刻的山'));
+  inner.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:14px','阿檜 · 巨木群棧道 28 號 · 1,095 歲'));
+  inner.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:22px','點開，看它此刻的山'));
   card.appendChild(inner);
   root.appendChild(card);
 
-  var sst = 'display:block;margin:16px auto 0;width:290px;padding:12px;border-radius:999px;border:none;background:#C98A3D;color:#FDFBF3;font-size:14px;cursor:pointer;font-family:inherit';
-  var sb = el('button', sst, '分享這張卡');
-  sb.onclick = function(){ showToast('已產生分享卡連結 · 心事絕不外流'); };
-  hover(sb,'background:#B87C31', sst);
-  root.appendChild(sb);
+  var wrap = el('div','max-width:300px;margin:16px auto 0');
+  wrap.appendChild(button(BTN_PRIMARY, '分享這張卡', function(){ showToast('已產生分享卡連結 · 心事絕不外流'); }, 'background:#E7F1E4'));
+  root.appendChild(wrap);
 
-  var note = el('div','font-size:11px;color:#A29B7E;text-align:center;margin-top:10px;line-height:1.7');
+  var note = el('div','font-size:11px;color:'+C.text3+';text-align:center;margin-top:12px;line-height:1.75');
   note.innerHTML = '分享卡只有山景和天數。<br>你說過的每一句心事，永遠不會出現在這裡。';
   root.appendChild(note);
   return root;
 }
 
 function screen6(){
-  var root = el('div','flex:1;overflow-y:auto;padding:62px 18px 8px;min-height:0;box-sizing:border-box');
+  var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','6 年輪種樹');
-  root.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:22px;font-weight:600;color:#31472F;padding-top:8px','年輪'));
-  root.appendChild(el('div','font-size:12.5px;color:#8A8468;margin-top:4px','說心事、做練習，年輪一圈圈長。長夠了，就種下一棵真的樹。'));
+  root.appendChild(hero('年輪', '說心事、做練習，年輪一圈圈長。長夠了，就種下一棵真的樹。'));
 
   var stage = ringStage(), r = rings();
-  var wrap = el('div','display:flex;flex-direction:column;align-items:center;margin-top:16px;gap:12px');
-  var holder = el('div','height:215px;display:flex;align-items:center;justify-content:center');
+  var holder = glowStage(250);
+  holder.style.marginTop = '10px';
+  var center = el('div','position:absolute;left:50%;top:44%;transform:translate(-50%,-50%)');
   var breathe = el('div','animation:th-breathe 9s ease-in-out 3s infinite');
-  var ringBox = el('div','width:210px;height:210px;transform:scale('+stage.scale+');opacity:'+stage.op+';transition:transform 1.4s cubic-bezier(.4,0,.3,1),opacity 1.4s ease');
+  var ringBox = el('div','width:210px;height:210px;transform:scale('+stage.scale+');opacity:'+stage.op+';transition:transform 1.4s cubic-bezier(.4,0,.3,1),opacity 1.4s ease;filter:drop-shadow(0 0 10px rgba(123,227,111,.35))');
   ringBox.innerHTML = ringSvg();
-  breathe.appendChild(ringBox); holder.appendChild(breathe); wrap.appendChild(holder);
-  wrap.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:14.5px;color:#3A4634;line-height:1.8;text-align:center;max-width:260px', stage.line));
+  breathe.appendChild(ringBox); center.appendChild(breathe); holder.appendChild(center);
+  root.appendChild(holder);
+  root.appendChild(el('div','font-size:15px;color:'+C.text+';line-height:1.8;text-align:center;max-width:290px;margin:6px auto 0;text-wrap:balance', stage.line));
 
   var canPlant = r >= 500 && !S.planted, notYet = r < 500 && !S.planted;
   if(canPlant){
-    var big = el('div','display:flex;align-items:baseline;gap:6px;margin-top:2px');
-    big.appendChild(el('span','font-size:34px;font-weight:700;color:#A96F28;font-variant-numeric:tabular-nums','500'));
-    big.appendChild(el('span','font-size:12px;color:#A96F28;white-space:nowrap','圈年輪 · 滿了'));
-    wrap.appendChild(big);
-  }
-  root.appendChild(wrap);
-
-  if(canPlant){
-    var pst = 'display:block;width:100%;margin-top:18px;padding:14px;border-radius:999px;border:none;background:#C98A3D;color:#FDFBF3;font-size:15px;cursor:pointer;font-family:inherit;font-weight:500';
-    var pb = el('button', pst, '種下一棵台灣杉');
-    pb.onclick = function(){ S.planted = true; showToast('種下了。苗編號 TW-0047 已寫進你的森林。'); renderScreen(); };
-    hover(pb,'background:#B87C31', pst);
-    root.appendChild(pb);
+    var big = el('div','display:flex;align-items:baseline;justify-content:center;gap:6px;margin-top:10px');
+    big.appendChild(el('span','font-size:38px;font-weight:600;color:'+C.lime+';font-variant-numeric:tabular-nums','500'));
+    big.appendChild(el('span','font-size:12px;color:'+C.lime+';white-space:nowrap','圈年輪 · 滿了'));
+    root.appendChild(big);
+    var pw = el('div','margin-top:16px');
+    pw.appendChild(button(BTN_PRIMARY, '種下一棵台灣杉', function(){ S.planted = true; showToast('種下了。苗編號 TW-0047 已寫進你的森林。'); renderScreen(); }, 'background:#E7F1E4'));
+    root.appendChild(pw);
   }
   if(notYet){
-    var ast = 'display:block;width:100%;margin-top:18px;padding:12px;border-radius:999px;border:1px solid #4E6B4A;background:none;color:#4E6B4A;font-size:13.5px;cursor:pointer;font-family:inherit';
-    var ab = el('button', ast, '把今天記下來（示意）');
-    ab.onclick = function(){ S.gained += 15; renderScreen(); };
-    hover(ab,'background:rgba(78,107,74,.07)', ast);
-    root.appendChild(ab);
+    var aw = el('div','margin-top:18px');
+    aw.appendChild(button(BTN_GLASS, '把今天記下來（示意）', function(){ S.gained += 15; renderScreen(); }, 'background:rgba(255,255,255,.14)'));
+    root.appendChild(aw);
   }
   if(S.planted){
-    var pc = el('div','margin-top:18px;background:#FBF8EE;border:1px solid #C98A3D;border-radius:18px;padding:18px 20px');
-    pc.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A96F28','已種下 · 2026.08.02'));
-    pc.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:19px;font-weight:600;color:#31472F;margin-top:8px','台灣杉 · 苗 TW-0047'));
-    pc.appendChild(el('div','font-size:12px;color:#8A8468;margin-top:6px;font-variant-numeric:tabular-nums','座標 23.51°N, 120.80°E · 大塔山北坡'));
-    pc.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:13.5px;color:#3A4634;line-height:1.8;margin-top:10px','心事有了出口，世界多了一棵樹。明年今天，寄它的第一張照片給你。'));
+    var pc = el('div', CARD + ';border-color:rgba(123,227,111,.5);margin-top:18px;padding:18px 20px');
+    pc.appendChild(el('div', EYEBROW, '已種下 · 2026.08.02'));
+    pc.appendChild(el('div','font-size:20px;font-weight:500;color:'+C.text+';margin-top:8px','台灣杉 · 苗 TW-0047'));
+    pc.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:6px;font-variant-numeric:tabular-nums','座標 23.51°N, 120.80°E · 大塔山北坡'));
+    pc.appendChild(el('div','font-size:14px;color:'+C.text+';line-height:1.8;margin-top:10px','心事有了出口，世界多了一棵樹。明年今天，寄它的第一張照片給你。'));
     root.appendChild(pc);
   }
 
-  var log = el('div','margin-top:16px;display:flex;flex-direction:column;gap:8px');
-  log.appendChild(el('div','font-size:11px;letter-spacing:2px;color:#A29B7E;margin-top:2px','這些日子，都長在年輪裡'));
+  var log = el('div','margin-top:22px;display:flex;flex-direction:column;gap:8px');
+  log.appendChild(el('div','font-size:11px;letter-spacing:2.5px;color:'+C.text3+';margin:0 2px 4px','這些日子，都長在年輪裡'));
   [['連續 21 天，跟日出一起讀晨報','7月'],['第一次用聲音說了心事','6月'],['那個週末，你真的來看了阿檜','6月']].forEach(function(row){
-    var it = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px;white-space:nowrap;font-size:12.5px;color:#6B6A50;padding:10px 14px;background:#FBF8EE;border:1px solid #EDE5CB;border-radius:12px');
+    var it = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px;white-space:nowrap;font-size:13px;color:'+C.text+';padding:14px 16px;border-radius:18px;' + GLASS);
     it.appendChild(el('span', null, row[0]));
-    it.appendChild(el('span','color:#A29B7E;font-size:11px', row[1]));
+    it.appendChild(el('span','color:'+C.text3+';font-size:11.5px', row[1]));
     log.appendChild(it);
   });
   root.appendChild(log);
@@ -788,80 +859,65 @@ function screen7(){
   var root = el('div','flex:1;position:relative;overflow:hidden;background:'+sc.sky+';min-height:0');
   root.setAttribute('data-screen-label','7 即時風景');
 
-  root.appendChild(el('div','position:absolute;left:-20%;bottom:0;width:140%;height:42%;background:'+sc.hillA+';border-radius:50% 50% 0 0'));
-  root.appendChild(el('div','position:absolute;left:-10%;bottom:-30px;width:130%;height:30%;background:'+sc.hillB+';border-radius:50% 50% 0 0'));
-  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:20%;height:26%;background:rgba(245,241,228,'+sc.fog+');filter:blur(20px);animation:th-drift 26s ease-in-out infinite'));
   if(sc.star > 0){
     STARS.forEach(function(s){
-      root.appendChild(el('div','position:absolute;left:'+s.l+'%;top:'+s.t+'%;width:'+s.w+'px;height:'+s.w+'px;border-radius:50%;background:#F5F1E4;opacity:'+sc.star));
+      root.appendChild(el('div','position:absolute;left:'+s.l+'%;top:'+s.t+'%;width:'+s.w+'px;height:'+s.w+'px;border-radius:50%;background:#F2F6F0;opacity:'+sc.star));
     });
   }
+  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at 50% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
+  root.appendChild(el('div','position:absolute;left:-20%;bottom:0;width:140%;height:44%;background:'+sc.hillA+';border-radius:50% 50% 0 0'));
+  /* 白天是壓暗的剪影；夜裡改成淡淡的月光線條 */
+  root.appendChild(cypress('left:56%;bottom:30%;height:36%;' + (sc.star > 0 ? 'opacity:.3' : 'opacity:.88;filter:brightness(.16)')));
+  root.appendChild(el('div','position:absolute;left:-10%;bottom:-30px;width:130%;height:32%;background:'+sc.hillB+';border-radius:50% 50% 0 0'));
+  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+sc.fog+');filter:blur(20px);animation:th-drift 26s ease-in-out infinite'));
 
-  var top = el('div','position:absolute;top:66px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center');
-  var tl = el('div');
-  var live = el('div','display:flex;align-items:center;gap:7px');
-  live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:#C98A3D;animation:th-pulse 3s infinite'));
-  live.appendChild(el('span','font-size:11px;letter-spacing:1px;color:'+sc.muted+';white-space:nowrap','LIVE · 阿里山 · 海拔 2,173m'));
-  tl.appendChild(live);
-  tl.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:22px;font-weight:600;color:'+sc.text+';margin-top:6px','阿檜的山'));
-  top.appendChild(tl);
-  top.appendChild(el('div','text-align:right;font-size:12px;color:'+sc.muted+';line-height:1.6;white-space:nowrap;flex-shrink:0', sc.temp));
+  var top = el('div','position:absolute;top:62px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:8px');
+  var live = el('span', TAG_ON_IMG);
+  live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:'+C.lime+';animation:th-pulse 3s infinite'));
+  live.appendChild(document.createTextNode('LIVE · 阿里山 · 海拔 2,173m'));
+  top.appendChild(live);
+  top.appendChild(el('span', TAG_ON_IMG, sc.temp));
   root.appendChild(top);
+  root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text,'阿檜的山'));
 
-  var bottom = el('div','position:absolute;left:18px;right:18px;bottom:14px;display:flex;flex-direction:column;gap:10px');
-  bottom.appendChild(el('div','font-size:12px;color:rgba(245,241,228,.85)', sc.sound));
-  bottom.appendChild(el('div','font-size:10.5px;color:rgba(245,241,228,.55)','風景跟著山上的真實時間走'));
+  var bottom = el('div','position:absolute;left:18px;right:18px;bottom:104px;display:flex;flex-direction:column;align-items:flex-start;gap:10px');
+  bottom.appendChild(el('span', TAG_ON_IMG, sc.sound));
+  bottom.appendChild(el('div','font-size:10.5px;color:rgba(242,246,240,.6);padding-left:4px','風景跟著山上的真實時間走'));
   root.appendChild(bottom);
   return root;
 }
 
 var BUILDERS = [screen1, screen2, screen3, screen4, screen5, screen6, screen7];
 
-/* ── chrome：側欄、分頁、狀態列配色 ─────────────────────── */
+/* ── chrome：側欄、浮動分頁列 ───────────────────────────── */
 function renderSidebar(){
   var host = document.getElementById('screenList');
   host.innerHTML = '';
   LABELS.forEach(function(label, i){
     var n = i+1, a = S.screen === n;
-    var st = 'display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;'
-      + 'border:1px solid '+(a?'#4E6B4A':'#DDD5BB')+';background:'+(a?'#4E6B4A':'transparent')+';'
-      + 'color:'+(a?'#F5F1E4':'#5A5744')+';font-size:13.5px;cursor:pointer;text-align:left;font-family:inherit;transition:background .3s';
+    var st = 'display:flex;align-items:center;gap:12px;padding:11px 18px;border-radius:999px;'
+      + 'border:1px solid '+(a?'#14301F':'rgba(15,36,24,.12)')+';background:'+(a?'#14301F':'transparent')+';'
+      + 'color:'+(a?'#F2F6F0':'#25382B')+';font-size:13.5px;cursor:pointer;text-align:left;transition:background .3s';
     var b = el('button', st);
-    b.appendChild(el('span','font-size:11px;font-variant-numeric:tabular-nums;opacity:.55','0'+n));
+    b.appendChild(el('span','font-size:11px;font-variant-numeric:tabular-nums;opacity:.5','0'+n));
     b.appendChild(el('span','font-weight:500', label));
     b.onclick = go(n);
-    hover(b,'background:'+(a?'#4E6B4A':'#E7E0CB'), st);
+    hover(b,'background:'+(a?'#14301F':'rgba(15,36,24,.06)'), st);
     host.appendChild(b);
   });
 }
 function renderTabs(){
-  var night = isNight();
   var map = {'我的樹':[1,2,4,5], '森林':[3], '風景':[7], '年輪':[6]};
   var to  = {'我的樹':1, '森林':3, '風景':7, '年輪':6};
   var host = document.getElementById('tabbar');
   host.innerHTML = '';
-  host.style.background   = night ? 'rgba(14,23,18,.92)' : '#F5F1E4';
-  host.style.borderTop    = '1px solid ' + (night ? 'rgba(245,241,228,.12)' : '#E9E2CC');
+  var bar = el('div','display:flex;gap:4px;padding:6px;border-radius:999px;background:rgba(12,28,19,.55);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 30px rgba(0,0,0,.28)');
   Object.keys(map).forEach(function(k){
     var a = map[k].indexOf(S.screen) >= 0;
-    var color = night ? (a?'#E7E2CF':'rgba(231,226,207,.45)') : (a?'#31472F':'#A29B7E');
-    var b = el('button','flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;border:none;background:none;cursor:pointer;padding:6px 0;font-family:inherit');
-    b.appendChild(el('span','width:5px;height:5px;border-radius:50%;background:'+(a?'#C98A3D':'transparent')));
-    b.appendChild(el('span','font-size:11px;color:'+color+';font-weight:500', k));
-    b.onclick = go(to[k]);
-    host.appendChild(b);
+    var st = 'flex:1;padding:11px 0;border-radius:999px;border:none;cursor:pointer;font-size:13px;font-weight:'+(a?'600':'400')+';background:'+(a?'#fff':'transparent')+';color:'+(a?C.ink:C.text2)+';transition:background .25s';
+    bar.appendChild(button(st, k, go(to[k]), a ? null : 'color:'+C.text));
   });
-}
-function paintChrome(){
-  var night = isNight(), sc = SCENES[curTod()];
-  var phoneBg = S.screen === 7 ? (sc.sky.indexOf('0E1712') >= 0 ? '#0E1712' : '#F5F1E4') : '#F5F1E4';
-  document.getElementById('app').style.background = phoneBg;
-  document.getElementById('device').style.background = night ? '#000' : '#F2F2F7';
-  var c = night ? '#fff' : '#000';
-  document.getElementById('sbTime').style.color = c;
-  Array.prototype.forEach.call(document.querySelectorAll('.sbIcon'),   function(n){ n.setAttribute('fill', c); });
-  Array.prototype.forEach.call(document.querySelectorAll('.sbStroke'), function(n){ n.setAttribute('stroke', c); });
-  document.getElementById('homeInd').style.background = night ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.25)';
+  host.appendChild(bar);
 }
 
 function renderScreen(){
@@ -870,7 +926,6 @@ function renderScreen(){
   var host = document.getElementById('screenHost');
   host.innerHTML = '';
   host.appendChild(BUILDERS[S.screen - 1]());
-  paintChrome();
 }
 function setScreen(n){
   if(S.screen === n){ return; }
@@ -883,8 +938,7 @@ function setScreen(n){
 renderSidebar(); renderTabs(); renderScreen();
 /* 每分鐘重算山上的時段，讓風景跟著真實時間走 */
 setInterval(function(){
-  if(S.screen === 7 || S.screen === 2) renderScreen();
-  renderTabs(); paintChrome();
+  if(S.screen === 7) renderScreen();
 }, 60000);
 
 })();
