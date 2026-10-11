@@ -579,29 +579,22 @@ function screen3(){
     }
     card.appendChild(dotsRow);
     card.appendChild(el('div','font-family:\'Noto Serif TC\',serif;font-size:17px;color:#31472F;line-height:1.6', q.title));
-    var hasSound = q.opts.some(function(o){ return o.sound; });
-    if(hasSound) card.appendChild(el('div','font-size:12px;color:#8A8468;margin-top:4px','先按 ▶ 聽聽看，再選。'));
     var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
     q.opts.forEach(function(o){
-      var st = (o.sound ? 'flex:1;min-width:0;' : '') + 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
+      var st = 'padding:12px 16px;border-radius:14px;border:1px solid #E0D8BE;background:#F5F1E4;color:#3A4634;font-size:14px;cursor:pointer;text-align:left;font-family:inherit';
       var b = el('button', st, o.label);
       b.onclick = function(){
         S.quizPick[S.quizStep] = o;
-        if(o.sound) playSound(o.sound); else stopSound();
         if(S.quizStep < 2){ S.quizStep++; }
-        else { S.matched = quizResult(); S.matchedVia = 'quiz'; }
+        else {
+          S.matched = quizResult(); S.matchedVia = 'quiz';
+          /* 聲音留到樹洞揭曉時才播：選了聲音的，結果頁一出現就開始 */
+          if(o.sound) playSound(o.sound); else stopSound();
+        }
         renderScreen();
       };
       hover(b,'background:#EFE9D4;border-color:#4E6B4A', st);
-      if(!o.sound){ opts.appendChild(b); return; }
-      /* 有聲音的選項：右邊一顆試聽鍵，點選項本身仍是「選這個」 */
-      var on = SND.key === o.sound;
-      var row = el('div','display:flex;gap:8px;align-items:stretch');
-      var pb = el('button','width:46px;flex-shrink:0;border-radius:14px;border:1px solid '+(on?'#4E6B4A':'#E0D8BE')+';background:'+(on?'#4E6B4A':'#F5F1E4')+';color:'+(on?'#F5F1E4':'#4E6B4A')+';font-size:12px;cursor:pointer;font-family:inherit', on ? '❚❚' : '▶');
-      pb.setAttribute('aria-label', (on ? '停止試聽：' : '試聽：') + o.label);
-      pb.onclick = function(){ toggleSound(o.sound); renderScreen(); };
-      row.appendChild(b); row.appendChild(pb);
-      opts.appendChild(row);
+      opts.appendChild(b);
     });
     card.appendChild(opts);
     root.appendChild(card);
