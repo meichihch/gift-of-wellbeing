@@ -1207,14 +1207,17 @@ function screen7(){
     var cc = night ? 'rgba(48,60,54,.55)' : (dim >= 0.3 ? 'rgba(140,152,146,.42)' : 'rgba(214,224,218,.32)');
     root.appendChild(el('div','position:absolute;left:'+(-15 + ci*28)+'%;top:'+(10 + (ci%2)*9)+'%;width:62%;height:12%;border-radius:50%;background:'+cc+';filter:blur(22px);animation:th-drift '+(30 + ci*7)+'s ease-in-out infinite'));
   }
-  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at 50% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
+  /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
+     也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
+  var TREE_X = 59;
+  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at '+TREE_X+'% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
   root.appendChild(el('div','position:absolute;left:-20%;bottom:0;width:140%;height:44%;background:'+sc.hillA+';border-radius:50% 50% 0 0'));
-  /* 阿檜旁邊的樹：左右對稱散在後面的稜線上，比阿檜小很多、也淡很多 */
-  [[8, 33, 14], [20, 35, 19], [32, 34, 13], [68, 34, 13], [80, 35, 19], [92, 33, 15]].forEach(function(p){
+  /* 阿檜旁邊的樹：散在後面的稜線上，比阿檜小很多、也淡很多；左邊空間比較大，多放一棵 */
+  [[9, 33, 15], [21, 35, 19], [34, 34, 13], [77, 34, 14], [90, 33, 17]].forEach(function(p){
     root.appendChild(cypress('left:'+p[0]+'%;bottom:'+p[1]+'%;height:'+p[2]+'%;transform:translateX(-57%);' + (night ? 'opacity:.08' : 'opacity:.3;filter:brightness(.38)')));
   });
-  /* 阿檜：置中、完整對稱、比旁邊的樹大也清楚得多 */
-  root.appendChild(fullTree('left:50%;bottom:30%;height:42%;transform:translateX(-50%);' + (night ? 'opacity:.62;filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:.95;filter:brightness(.13)')));
+  /* 阿檜：完整對稱、比旁邊的樹大也清楚得多 */
+  root.appendChild(fullTree('left:'+TREE_X+'%;bottom:30%;height:42%;transform:translateX(-50%);' + (night ? 'opacity:.62;filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:.95;filter:brightness(.13)')));
   root.appendChild(el('div','position:absolute;left:-10%;bottom:-30px;width:130%;height:32%;background:'+sc.hillB+';border-radius:50% 50% 0 0'));
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+fogAmt+');filter:blur(20px);animation:th-drift 26s ease-in-out infinite'));
   if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+(night ? 0.14 : 0.32)+') 100%)'));
