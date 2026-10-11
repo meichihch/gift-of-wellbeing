@@ -600,8 +600,17 @@ function msgNode(m){
     wrap = el('div','max-width:84%;align-self:flex-start');
     bub  = el('div', GLASS + ';border-radius:6px 22px 22px 22px;padding:13px 16px;font-size:15px;line-height:1.75;color:'+C.text, m.text);
     if(m.hasImg){
-      var sc = miniScene(132, ['今晨 06:10 · 山上起霧即時影像']);
+      /* 這是畫出來的山景，不是影像：標籤只寫那時的天氣，不宣稱「即時影像」；
+         點下去帶到即時風景，那裡才是跟著當下天氣走的山 */
+      var sc = miniScene(132, ['今晨 06:10 · 起霧 · 14°C']);
       sc.style.marginTop = '12px';
+      sc.style.cursor = 'pointer';
+      sc.setAttribute('role', 'button');
+      sc.setAttribute('tabindex', '0');
+      sc.setAttribute('aria-label', '看看阿檜現在的山');
+      sc.appendChild(el('span', TAG_ON_IMG + ';position:absolute;right:12px;bottom:12px', '看看現在的山 ›'));
+      sc.onclick = go(7);
+      sc.addEventListener('keydown', function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); setScreen(7); } });
       bub.appendChild(sc);
     }
     wrap.appendChild(bub);
