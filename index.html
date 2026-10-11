@@ -76,7 +76,7 @@ var S = {
   screen:1, thinking:false, gained:0, planted:false,
   quizStep:0, quizPick:[], matched:null,
   breathing:false, bDone:false, bIdx:0, phase:'', bScale:1, bDur:4, cycles:0,
-  toast:'', replyCount:0,
+  toast:'', replyCount:0, sceneMuted:false,
   messages:[
     {isTree:true, hasImg:true, text:'早安，今天山上起霧了，有種清新的美感。我想分享給你', time:'06:12 · 跟日出一起送達'},
     {isMe:true, text:'今天好沒動力起床，最近的事一件接著一件來。', time:'06:47'},
@@ -166,7 +166,6 @@ var FORESTS = [
   {label:'看得很遠的高山植群', tree:{name:'遠望', meta:'玉山前峰 玉山圓柏 · 900 歲 · 森林界線', forest:'看得很遠的高山植群', line:'「我住在森林結束的地方。從這裡看下去，什麼都過得去。」'}}
 ];
 
-var STARS = [{l:12,t:14,w:2},{l:26,t:8,w:1.5},{l:38,t:20,w:2},{l:52,t:11,w:1.5},{l:64,t:24,w:2},{l:74,t:9,w:1.5},{l:86,t:17,w:2},{l:20,t:30,w:1.5},{l:58,t:33,w:1.5},{l:80,t:36,w:2},{l:34,t:38,w:1.5},{l:92,t:28,w:1.5}];
 
 /* 即時風景：四個時段都留在綠色調裡，天空頂端夠暗，讓淺色字與狀態列看得清楚 */
 var SCENES = {
@@ -376,7 +375,93 @@ function sceneBirds(ctx, out){
   phrase();
   return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
 }
-var SOUNDSCAPES = { fog:sceneFog, wind:sceneWind, birds:sceneBirds };
+/* 蟲鳴：三隻蟲在不同方向，各自用自己的節奏「唧唧唧」 */
+function sceneCrickets(ctx, out){
+  var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 400, 0, 0.1);
+  var bugs = [0,1,2].map(function(i){
+    return { f:4300 + i*380 + Math.random()*200, pan:-0.6 + i*0.6, every:0.55 + Math.random()*0.35, vol:0.1 + Math.random()*0.06 };
+  });
+  function chirp(c){
+    if(!alive) return;
+    var t0 = ctx.currentTime + 0.02, pulses = 3 + Math.floor(Math.random()*2);
+    for(var p=0;p<pulses;p++){
+      var tt = t0 + p*0.032, o = ctx.createOscillator(), e = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = c.f;
+      e.gain.setValueAtTime(0.0001, tt);
+      e.gain.exponentialRampToValueAtTime(c.vol, tt + 0.006);
+      e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.024);
+      o.connect(e); toOut(ctx, e, out, c.pan);
+      o.start(tt); o.stop(tt + 0.03);
+    }
+    setTimeout(function(){ chirp(c); }, (c.every + Math.random()*0.15) * 1000);
+  }
+  bugs.forEach(function(c, i){ setTimeout(function(){ chirp(c); }, i*230); });
+  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+}
+/* 遠處的貓頭鷹：低低的「呼——呼呼——」，隔一陣子才叫一次 */
+function sceneOwl(ctx, out){
+  var alive = true, lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(out);
+  function hoot(tt, f, dur, vol, pan){
+    var o = ctx.createOscillator(), e = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(f*1.04, tt); o.frequency.exponentialRampToValueAtTime(f*0.94, tt + dur);
+    e.gain.setValueAtTime(0.0001, tt);
+    e.gain.exponentialRampToValueAtTime(vol, tt + 0.06);
+    e.gain.setValueAtTime(vol, tt + dur*0.6);
+    e.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
+    o.connect(e); toOut(ctx, e, lp, pan);
+    o.start(tt); o.stop(tt + dur + 0.05);
+  }
+  function call(){
+    if(!alive) return;
+    var tt = ctx.currentTime + 0.05, f = 360 + Math.random()*60, pan = Math.random()*1.2 - 0.6, vol = 0.11;
+    hoot(tt,        f,      0.42, vol,      pan);
+    hoot(tt + 0.75, f*0.97, 0.22, vol*0.8,  pan);
+    hoot(tt + 1.05, f*0.95, 0.5,  vol*0.9,  pan);
+    setTimeout(call, 6000 + Math.random()*7000);
+  }
+  setTimeout(call, 1500);
+  return function(){ alive = false; };
+}
+/* 遠處的蟬：高頻的嘶聲帶著快速的顫動，一陣漸強、一陣漸弱 */
+function sceneCicadas(ctx, out){
+  var alive = true;
+  var src = noiseSrc(ctx, 'pink'), bp = ctx.createBiquadFilter(), am = ctx.createGain(), swell = ctx.createGain();
+  var lfo = ctx.createOscillator(), depth = ctx.createGain();
+  bp.type = 'bandpass'; bp.frequency.value = 4800; bp.Q.value = 3;
+  am.gain.value = 0.5; lfo.frequency.value = 62; depth.gain.value = 0.45;
+  lfo.connect(depth); depth.connect(am.gain);
+  swell.gain.value = 0.0001;
+  src.connect(bp); bp.connect(am); am.connect(swell); swell.connect(out);
+  src.start(); lfo.start();
+  function cycle(){
+    if(!alive) return;
+    swell.gain.setTargetAtTime(1.2 + Math.random()*0.8, ctx.currentTime, 1.6);
+    setTimeout(function(){ if(alive) swell.gain.setTargetAtTime(0.12, ctx.currentTime, 1.4); }, 4000 + Math.random()*3000);
+    setTimeout(cycle, 9000 + Math.random()*5000);
+  }
+  cycle();
+  return function(){ alive = false; try{ src.stop(); }catch(e){} try{ lfo.stop(); }catch(e){} };
+}
+/* 把幾種聲音疊在一起，各自調音量 */
+function layered(layers){
+  return function(ctx, out){
+    var stops = layers.map(function(l){
+      var g = ctx.createGain(); g.gain.value = l[1]; g.connect(out);
+      return l[0](ctx, g);
+    });
+    return function(){ stops.forEach(function(s){ s(); }); };
+  };
+}
+var SOUNDSCAPES = {
+  fog:sceneFog, wind:sceneWind, birds:sceneBirds,
+  /* 即時風景：跟著山上的時段 */
+  'scene-晨': layered([[sceneFog, 0.8], [sceneBirds, 0.7], [sceneWind, 0.35]]),   /* 霧滴、山雀（近）、風很輕 */
+  'scene-午': layered([[sceneCicadas, 1], [sceneWind, 0.6]]),                    /* 蟬（遠）、風吹過樹冠 */
+  'scene-暮': layered([[sceneWind, 0.8], [sceneBirds, 0.6]]),                    /* 晚風、山雀歸巢 */
+  'scene-夜': layered([[sceneCrickets, 1], [sceneOwl, 1]])                       /* 蟲鳴、貓頭鷹（遠） */
+};
 function playSound(key){
   if(SND.key === key) return;
   stopSound();
@@ -854,19 +939,105 @@ function screen6(){
   return root;
 }
 
+/* ── 星空：閃爍的星星＋偶爾劃過的流星（畫布）────────────────
+   星星位置只生成一次，每分鐘重畫風景時不會跳動 */
+var STARFIELD = null;
+function starfield(){
+  if(STARFIELD) return STARFIELD;
+  var rnd = function(seed){ var x = Math.sin(seed*91.7)*43758.5453; return x - Math.floor(x); };
+  STARFIELD = [];
+  for(var i=0;i<120;i++){
+    var r = 0.4 + Math.pow(rnd(i*7+1), 3) * 1.3;
+    STARFIELD.push({
+      x: rnd(i*3+2),
+      y: Math.pow(rnd(i*5+3), 1.5),          /* 越靠近天頂越多，靠近稜線越少 */
+      r: r,
+      a: 0.35 + rnd(i*11+4)*0.6,
+      sp: 0.6 + rnd(i*13+5)*2.2,             /* 每顆星閃爍的快慢都不同 */
+      dp: 0.25 + rnd(i*19+8)*0.6,            /* 閃爍的幅度也不同：有的只微微變暗 */
+      ph: rnd(i*17+6)*6.283,
+      big: r > 1.25
+    });
+  }
+  return STARFIELD;
+}
+function mountSky(root){
+  var cv = document.createElement('canvas');
+  cv.setAttribute('style','position:absolute;left:0;top:0;width:100%;height:74%;pointer-events:none');
+  cv.setAttribute('aria-hidden','true');
+  root.appendChild(cv);
+  var stars = starfield();
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var meteors = [], nextMeteor = performance.now() + 1200 + Math.random()*2500;
+  function spawn(w, h, nowT){
+    var left = Math.random() < 0.7;                       /* 多半往左下，偶爾往右下 */
+    var ang = (left ? 145 + Math.random()*15 : 20 + Math.random()*15) * Math.PI/180;
+    return { x0: left ? w*(0.35 + Math.random()*0.65) : w*Math.random()*0.6, y0: h*Math.random()*0.35,
+             cos: Math.cos(ang), sin: Math.sin(ang), v: 520 + Math.random()*260,
+             life: 900 + Math.random()*450, len: 90 + Math.random()*70, t0: nowT };
+  }
+  function frame(nowT){
+    if(!cv.isConnected) return;                           /* 離開畫面就停 */
+    var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+    var g = cv.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+    g.fillStyle = '#F2F6F0';
+    stars.forEach(function(s){
+      var a = still ? s.a : s.a * (1 - s.dp*(0.5 - 0.5*Math.sin(nowT*0.001*s.sp + s.ph)));
+      var x = s.x*w, y = s.y*h;
+      if(s.big){
+        /* 亮星的光暈：從中心往外漸淡，不是一圈實心的圓 */
+        var halo = g.createRadialGradient(x, y, 0, x, y, s.r*4.5);
+        halo.addColorStop(0, 'rgba(242,246,240,'+(a*0.45)+')');
+        halo.addColorStop(1, 'rgba(242,246,240,0)');
+        g.globalAlpha = 1; g.fillStyle = halo;
+        g.beginPath(); g.arc(x, y, s.r*4.5, 0, 6.283); g.fill();
+        g.fillStyle = '#F2F6F0';
+      }
+      g.globalAlpha = a; g.beginPath(); g.arc(x, y, s.r, 0, 6.283); g.fill();
+    });
+    if(!still && nowT > nextMeteor){
+      meteors.push(spawn(w, h, nowT));
+      nextMeteor = nowT + 3500 + Math.random()*6000;
+    }
+    meteors = meteors.filter(function(m){ return nowT - m.t0 < m.life; });
+    meteors.forEach(function(m){
+      var tt = (nowT - m.t0)/1000, p = (nowT - m.t0)/m.life;
+      var hx = m.x0 + m.cos*m.v*tt, hy = m.y0 + m.sin*m.v*tt;
+      var tl = Math.min(m.len, m.v*tt);
+      var tx = hx - m.cos*tl, ty = hy - m.sin*tl;
+      var fade = p < 0.15 ? p/0.15 : (p > 0.65 ? (1-p)/0.35 : 1);
+      var grad = g.createLinearGradient(hx, hy, tx, ty);
+      grad.addColorStop(0, 'rgba(242,246,240,'+(0.95*fade)+')');
+      grad.addColorStop(1, 'rgba(242,246,240,0)');
+      g.globalAlpha = 1; g.strokeStyle = grad; g.lineWidth = 1.6; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke();
+      g.globalAlpha = fade; g.beginPath(); g.arc(hx, hy, 1.6, 0, 6.283); g.fill();
+    });
+    g.globalAlpha = 1;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 function screen7(){
-  var sc = SCENES[curTod()];
+  var tod = curTod(), sc = SCENES[tod];
   var root = el('div','flex:1;position:relative;overflow:hidden;background:'+sc.sky+';min-height:0');
   root.setAttribute('data-screen-label','7 即時風景');
 
-  if(sc.star > 0){
-    STARS.forEach(function(s){
-      root.appendChild(el('div','position:absolute;left:'+s.l+'%;top:'+s.t+'%;width:'+s.w+'px;height:'+s.w+'px;border-radius:50%;background:#F2F6F0;opacity:'+sc.star));
-    });
-  }
+  /* 進到這一頁就直接播山上的聲音（跟著時段）；使用者按過暫停，就尊重他的選擇 */
+  var sKey = 'scene-' + tod;
+  if(!S.sceneMuted) playSound(sKey);
+
+  if(sc.star > 0) mountSky(root);
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at 50% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
   root.appendChild(el('div','position:absolute;left:-20%;bottom:0;width:140%;height:44%;background:'+sc.hillA+';border-radius:50% 50% 0 0'));
-  /* 白天是壓暗的剪影；夜裡改成淡淡的月光線條 */
+  /* 阿檜旁邊的樹：站在後面、比較小、比較淡，讓阿檜還是最顯眼的那棵。
+     白天是壓暗的剪影（越遠越淡），夜裡是淡淡的月光線條 */
+  [[14, 33, 17], [28, 34, 22], [44, 33, 15], [80, 32, 24], [90, 33, 16]].forEach(function(p){
+    root.appendChild(cypress('left:'+p[0]+'%;bottom:'+p[1]+'%;height:'+p[2]+'%;' + (sc.star > 0 ? 'opacity:.13' : 'opacity:.42;filter:brightness(.3)')));
+  });
   root.appendChild(cypress('left:56%;bottom:30%;height:36%;' + (sc.star > 0 ? 'opacity:.3' : 'opacity:.88;filter:brightness(.16)')));
   root.appendChild(el('div','position:absolute;left:-10%;bottom:-30px;width:130%;height:32%;background:'+sc.hillB+';border-radius:50% 50% 0 0'));
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+sc.fog+');filter:blur(20px);animation:th-drift 26s ease-in-out infinite'));
@@ -881,8 +1052,16 @@ function screen7(){
   root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text,'阿檜的山'));
 
   var bottom = el('div','position:absolute;left:18px;right:18px;bottom:104px;display:flex;flex-direction:column;align-items:flex-start;gap:10px');
-  bottom.appendChild(el('span', TAG_ON_IMG, sc.sound));
-  bottom.appendChild(el('div','font-size:10.5px;color:rgba(242,246,240,.6);padding-left:4px','風景跟著山上的真實時間走'));
+  var on = SND.key === sKey;
+  var pst = 'display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;color:'+C.text+';font-size:12.5px;cursor:pointer;white-space:nowrap;'
+    + 'border:1px solid '+(on?'rgba(123,227,111,.55)':'rgba(255,255,255,.2)')+';background:'+(on?'rgba(123,227,111,.16)':'rgba(15,36,24,.38)')+';backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
+  var pill = button(pst, (on ? '❚❚  ' : '▶  ') + '山上的聲音', function(){
+    if(SND.key === sKey){ stopSound(); S.sceneMuted = true; }
+    else { playSound(sKey); S.sceneMuted = false; }
+    renderScreen();
+  });
+  pill.setAttribute('aria-label', on ? '暫停山上的聲音' : '播放山上的聲音');
+  bottom.appendChild(pill);
   root.appendChild(bottom);
   return root;
 }
@@ -929,7 +1108,7 @@ function renderScreen(){
 }
 function setScreen(n){
   if(S.screen === n){ return; }
-  if(S.screen === 3) stopSound();   /* 離開找樹洞，聲音淡出 */
+  if(S.screen === 3 || S.screen === 7) stopSound();   /* 離開找樹洞或即時風景，聲音淡出 */
   S.screen = n;
   renderScreen(); renderTabs(); renderSidebar();
 }
