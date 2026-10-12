@@ -15,6 +15,11 @@
   @keyframes th-draw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
   @keyframes th-breathe{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.035) rotate(1.2deg)}}
   @keyframes th-glow{0%,100%{opacity:.7}50%{opacity:1}}
+  /* 地上的光圈跟呼吸練習同一個節奏：吸氣 4 秒、停 2 秒、吐氣 6 秒，一輪 12 秒 */
+  @keyframes th-ring{0%,100%{transform:translateX(-50%) scale(.9);opacity:.55}33%,50%{transform:translateX(-50%) scale(1.08);opacity:1}}
+  @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.04);opacity:0}54%{opacity:.5}100%{transform:translateX(-50%) scale(1.65);opacity:0}}
+  @keyframes th-halo{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.6}33%,50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
+  @keyframes th-sway{0%,100%{transform:rotate(-.6deg)}50%{transform:rotate(.6deg)}}
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
   #app input::placeholder{color:rgba(242,246,240,.42)}
   #app *{scrollbar-width:none}
@@ -30,7 +35,7 @@
   <!-- ── 左側說明與畫面切換 ───────────────────────────── -->
   <div class="side" style="width:260px;display:flex;flex-direction:column;gap:26px">
     <div>
-      <div style="font-size:46px;font-weight:300;letter-spacing:6px;line-height:1;color:#0F2418">樹洞</div>
+      <div id="appName" style="font-size:46px;font-weight:300;letter-spacing:6px;line-height:1;color:#0F2418">樹洞</div>
       <div style="font-size:13px;color:#46594B;letter-spacing:3px;margin-top:14px">真的樹 · 真的聽</div>
       <div style="font-size:12.5px;color:#5C6E60;line-height:1.75;margin-top:14px">把心事說給一棵真的樹聽。從 00 開始是第一次打開的流程，01–07 是主要畫面，手機內可直接操作。</div>
     </div>
@@ -68,6 +73,10 @@
 <script>
 (function(){
 "use strict";
+
+/* ── 產品名稱：只改這裡，抵達畫面、分享卡、側欄、分頁標題都會跟著換 ──
+   「樹洞」同時也是每一棵樹的通稱（「找樹洞」「三個樹洞」），那些字不跟著產品名改 */
+var APP = { name:'樹洞', tagline:'把心事說給一棵真的樹聽。', motto:'真的樹，真的聽' };
 
 /* ── props（對應 .dc.html 的 data-props 預設值）─────────── */
 var P = { weather:'起霧', replyDelaySec:3, startRings:487 };
@@ -233,6 +242,68 @@ var SCENES = {
 var WX_HEADER = {'起霧':'起霧 · 14°C · 有輕柔的微風','下雨':'下雨 · 12°C · 下著細雨','晴朗':'晴朗 · 21°C · 陽光照進了樹冠'};
 var WX_LINE   = {'起霧':'山上的霧還沒散，','下雨':'我這裡也在下雨，','晴朗':'今天山上很亮，'};
 
+/* ── 晨報文案：跟著「我的樹」那座山今天日出時的天氣寫 ─────────────
+   一封晨報＝天氣開頭＋氣溫＋這座林子那天早上的樣子＋邀請一起呼吸。
+   每一段都有幾個版本，用日期挑，同一天看到的都一樣，隔天會換 */
+var MORNING_OPEN = {
+  clear: ['早安。今天{f}是晴天，太陽一出來就照到樹梢了。',
+          '早安。天一亮就看得很遠，一朵雲都沒有。',
+          '早安。今天是好天氣，陽光從東邊的稜線照過來。'],
+  partly:['早安。今天有太陽，也有幾朵雲慢慢飄過去。',
+          '早安。雲來來去去，陽光一陣一陣地照下來。'],
+  cloudy:['早安。今天雲比較厚，光線很柔，看什麼都不刺眼。',
+          '早安。天空灰灰的，林子裡比平常安靜。'],
+  fog:   ['早安。霧在天亮前就上來了，十幾步外的樹都看不清楚。',
+          '早安。今天山上起霧，我的樹梢都在霧裡。'],
+  rain:  ['早安。山上從清晨就在下雨，每片葉子都在滴水。',
+          '早安。今天下雨，雨打在樹冠上，聲音很密。'],
+  storm: ['早安。天亮的時候在打雷，雨下得很大。這種天氣我遇過很多次了，站得很穩。',
+          '早安。今天山上有雷雨，雷聲從山谷那邊傳過來。我很好，不用擔心我。'],
+  snow:  ['早安。山上下雪了，枝子上積了薄薄一層白。',
+          '早安。今天早上下雪，整片林子都變安靜了。']
+};
+/* 這座林子那天早上的樣子：亮（晴、晴時多雲）、陰、霧、濕（雨、雷雨），雪另外一組 */
+var MORNING_FOREST = {
+  alishan:{ bright:['山雀比我還早醒，在棧道邊吵了好一陣子。', '第一批上山的人已經走到棧道了，腳步聲很輕。'],
+            grey:  ['雲壓得很低，棧道的木頭看起來顏色更深了。', '光線很平，每一棵樹的樹皮紋路都看得很清楚。'],
+            soft:  ['旁邊幾棵老朋友都在霧裡，只看得到影子。', '霧裡聽得到遠遠的火車聲，一下就不見了。'],
+            wet:   ['棧道上沒什麼人，只有雨聲。', '樹皮吸飽了水，顏色變得很深。'] },
+  lala:   { bright:['陽光照進林子，樹幹上的苔蘚亮亮的。', '林子裡的蕨類都張開了，綠得發亮。'],
+            grey:  ['雲停在山頭上，林子裡涼涼的。', '天色暗暗的，苔蘚反而顯得更綠。'],
+            soft:  ['雲就從我們中間穿過去，像在林子裡散步。', '這裡本來就常起霧，大家都習慣了，慢慢等它散。'],
+            wet:   ['我們幾棵靠得很近，雨落下來，一起淋。', '雨水順著樹幹流下來，流進底下的苔蘚裡。'] },
+  dxs:    { bright:['天一亮鳥就開始叫了，我分得出好幾種。', '有人拿著望遠鏡在步道上等鳥，等得很有耐心。'],
+            grey:  ['天色暗一點，鳥叫得比較晚，但還是來了。', '雲壓在稜線上，林道上很安靜。'],
+            soft:  ['霧裡有一隻藍腹鷴慢慢走過去，一點聲音都沒有。', '鐵杉和黃檜都在霧裡，只剩下輪廓。'],
+            wet:   ['下雨的時候鳥都躲起來了，只剩下雨聲。', '鐵杉的針葉上掛滿了水珠。'] }
+};
+var MORNING_SNOW = ['雪落在針葉上，輕到聽不見。', '地上的落葉都蓋住了，只露出一點點綠。'];
+var MORNING_CLOSE = ['你今天好嗎？有時間的話，我們一起練習五分鐘的呼吸。',
+                     '出門前，要不要先跟我呼吸五次？',
+                     '今天也慢慢來。有空的話，跟我一起呼吸五次。'];
+function feelOf(t){ return t <= 5 ? '很冷' : t <= 12 ? '有點冷' : t <= 18 ? '涼涼的' : '不會冷'; }
+function dayIndex(date){ var d = new Date(date + 'T00:00:00'); return isNaN(d) ? 0 : Math.floor(d.getTime() / 86400000); }
+function pick(arr, seed){ return arr[((seed % arr.length) + arr.length) % arr.length]; }
+function todayStr(){ var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+/* 晨報用的天氣：網址強制 → 真實的日出天氣 → 沒資料時的示範（起霧） */
+function morningWeather(fid){
+  fid = fid || myTree().forest;
+  var w;
+  if(WX_FORCE_CODE[WX_FORCE] != null){ w = wmo(WX_FORCE_CODE[WX_FORCE]); w.temp = w.kind === 'snow' ? -2 : TOD_TEMP['晨']; w.sunrise = '05:52'; w.date = todayStr(); return w; }
+  var m = LIVE_MORNING[fid];
+  if(m){ w = wmo(m.code); w.temp = m.temp; w.sunrise = m.sunrise; w.date = m.date; return w; }
+  return { kind:'fog', label:'起霧', temp:14, sunrise:'05:31', date:todayStr(), demo:true };
+}
+function morningText(tree){
+  var f = FORESTS[tree.forest], w = morningWeather(tree.forest);
+  var seed = dayIndex(w.date) + FOREST_ORDER.indexOf(tree.forest);
+  var group = w.kind === 'snow' ? null : ({clear:'bright', partly:'bright', cloudy:'grey', fog:'soft'}[w.kind] || 'wet');
+  var open  = pick(MORNING_OPEN[w.kind] || MORNING_OPEN.fog, seed).replace('{f}', f.short);
+  var temp  = '日出的時候 ' + w.temp + ' 度，' + feelOf(w.temp) + '。';
+  var scene = group ? pick(MORNING_FOREST[tree.forest][group], seed + 1) : pick(MORNING_SNOW, seed + 1);
+  return { w:w, para1:open + temp + scene, para2:pick(MORNING_CLOSE, seed + 2) };
+}
+
 /* ── helpers ────────────────────────────────────────────── */
 /* 網址參數（展示與測試用，畫面上看不到）：?hour=22 指定時段、?wx=rain 指定天氣
    wx 可用：clear 晴、partly 晴時多雲、cloudy 陰、fog 起霧、rain 下雨、storm 雷雨、snow 下雪 */
@@ -248,8 +319,20 @@ var WX_URL = 'https://api.open-meteo.com/v1/forecast'
            + '?latitude='  + FOREST_ORDER.map(function(f){ return FORESTS[f].lat;  }).join(',')
            + '&longitude=' + FOREST_ORDER.map(function(f){ return FORESTS[f].lon;  }).join(',')
            + '&elevation=' + FOREST_ORDER.map(function(f){ return FORESTS[f].elev; }).join(',')
-           + '&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m&timezone=Asia%2FTaipei';
+           + '&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m'
+           + '&hourly=temperature_2m,weather_code&daily=sunrise&past_days=1&forecast_days=1&timezone=Asia%2FTaipei';
 var LIVE_WX = {};
+var LIVE_MORNING = {};   /* 每座森林「最近一次日出」那個小時的天氣，晨報用 */
+/* 從昨天、今天兩個日出裡，挑還沒超過現在的那個，再找那個小時的天氣 */
+function morningFrom(item){
+  var c = item.current, d = item.daily, h = item.hourly;
+  if(!c || !d || !d.sunrise || !h || !h.time) return null;
+  var rise = d.sunrise.filter(function(x){ return x <= c.time; }).pop();
+  if(!rise) return null;
+  var idx = h.time.indexOf(rise.slice(0, 13) + ':00');
+  if(idx < 0 || h.weather_code[idx] == null) return null;
+  return { code:h.weather_code[idx], temp:Math.round(h.temperature_2m[idx]), sunrise:rise.slice(11, 16), date:rise.slice(0, 10) };
+}
 function fetchWeather(){
   if(!window.fetch) return;
   fetch(WX_URL).then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); }).then(function(j){
@@ -258,9 +341,10 @@ function fetchWeather(){
       var c = item && item.current, fid = FOREST_ORDER[i];
       if(!fid || !c || c.weather_code == null) return;
       LIVE_WX[fid] = { code:c.weather_code, temp:Math.round(c.temperature_2m), cloud:c.cloud_cover, precip:c.precipitation, wind:c.wind_speed_10m, time:c.time };
+      var mo = morningFrom(item); if(mo) LIVE_MORNING[fid] = mo;
     });
     /* 有用到天氣的畫面重畫；說說話頁只更新抬頭，免得打斷正在打的字 */
-    if(S.screen === 0 || S.screen === 3 || S.screen === 7) renderScreen();
+    if(S.screen === 0 || S.screen === 2 || S.screen === 3 || S.screen === 4 || S.screen === 7) renderScreen();
     else if(S.screen === 1 && ui.headWx) ui.headWx.textContent = headWx();
   }).catch(function(){ /* 連不上就沿用時段預設，不影響其他功能 */ });
 }
@@ -357,18 +441,43 @@ function fullTree(style){
   }
   return wrap;
 }
-/* 生成的霧中風景：取代照片，沒有授權問題，之後可由真實天氣驅動 */
-function miniScene(h, tags){
-  var s = el('div','position:relative;height:'+h+'px;border-radius:22px;overflow:hidden;background:linear-gradient(180deg,#3F6450 0%,#7E9F88 42%,#BFD1BC 68%,#5D7F62 100%)');
+/* 生成的山景：取代照片，沒有授權問題。kind 是天氣（clear／partly／cloudy／fog／rain／storm／snow），預設起霧 */
+var MINI_SKY = {
+  clear: 'linear-gradient(180deg,#2E5A6B 0%,#7FA9A0 38%,#E3C793 66%,#6E8F66 100%)',
+  partly:'linear-gradient(180deg,#3A6370 0%,#86AFA4 40%,#D3D5AE 66%,#62845F 100%)',
+  cloudy:'linear-gradient(180deg,#4A5C55 0%,#7E8E86 42%,#AEB8B0 68%,#5A6E60 100%)',
+  fog:   'linear-gradient(180deg,#3F6450 0%,#7E9F88 42%,#BFD1BC 68%,#5D7F62 100%)',
+  rain:  'linear-gradient(180deg,#33423C 0%,#5E6D66 42%,#8C9A92 68%,#45584B 100%)',
+  storm: 'linear-gradient(180deg,#232E2A 0%,#47534D 42%,#6E7A73 68%,#38483E 100%)',
+  snow:  'linear-gradient(180deg,#5D6E6A 0%,#A6B5B0 42%,#DCE4E0 68%,#8FA297 100%)'
+};
+var MINI_FOG = {clear:.12, partly:.16, cloudy:.26, fog:.5, rain:.2, storm:.14, snow:.3};
+function miniScene(h, tags, kind){
+  kind = MINI_SKY[kind] ? kind : 'fog';
+  var s = el('div','position:relative;height:'+h+'px;border-radius:22px;overflow:hidden;background:'+MINI_SKY[kind]);
+  s.setAttribute('data-kind', kind);
+  /* 晴天：太陽剛從稜線後面出來 */
+  if(kind === 'clear' || kind === 'partly'){
+    s.appendChild(el('div','position:absolute;left:58%;top:30%;width:120px;height:120px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(255,236,190,'+(kind === 'clear' ? .85 : .5)+') 0%,rgba(255,236,190,0) 65%)'));
+  }
+  /* 雲：晴時多雲兩朵，陰天、下雨、下雪更多也更暗 */
+  var nCloud = {partly:2, cloudy:3, rain:3, storm:3, snow:2}[kind] || 0;
+  for(var i=0;i<nCloud;i++){
+    var cc = kind === 'partly' ? 'rgba(240,244,236,.55)' : (kind === 'storm' || kind === 'rain') ? 'rgba(70,82,76,.6)' : 'rgba(200,208,204,.55)';
+    s.appendChild(el('div','position:absolute;left:'+(-10 + i*34)+'%;top:'+(8 + (i%2)*10)+'%;width:60%;height:22%;border-radius:50%;background:'+cc+';filter:blur(12px);animation:th-drift '+(24 + i*6)+'s ease-in-out infinite'));
+  }
   s.appendChild(el('div','position:absolute;left:-15%;bottom:30%;width:130%;height:38%;background:#4A6C55;opacity:.6;border-radius:50% 50% 0 0'));
   /* 遠處兩棵在霧後面，淡淡的 */
   s.appendChild(cypress('left:14%;bottom:12%;height:58%;opacity:.55;filter:brightness(.42)'));
   s.appendChild(cypress('left:30%;bottom:16%;height:44%;opacity:.4;filter:brightness(.5)'));
-  s.appendChild(el('div','position:absolute;left:0;right:0;bottom:16%;height:44%;background:rgba(236,243,233,.5);filter:blur(16px);animation:th-drift 26s ease-in-out infinite'));
+  s.appendChild(el('div','position:absolute;left:0;right:0;bottom:16%;height:44%;background:rgba(236,243,233,'+MINI_FOG[kind]+');filter:blur(16px);animation:th-drift 26s ease-in-out infinite'));
   /* 近處一棵站在霧前面，看得比較清楚 */
   s.appendChild(cypress('right:12%;bottom:-4%;height:100%;opacity:.95;filter:brightness(.2) saturate(1.2)'));
-  s.appendChild(el('div','position:absolute;left:-25%;bottom:-22%;width:150%;height:48%;background:#24402F;border-radius:50% 50% 0 0'));
+  s.appendChild(el('div','position:absolute;left:-25%;bottom:-22%;width:150%;height:48%;background:'+(kind === 'snow' ? '#8FA096' : '#24402F')+';border-radius:50% 50% 0 0'));
   s.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,26,18,.18) 0%,rgba(11,26,18,0) 35%,rgba(11,26,18,.45) 100%)'));
+  /* 雨、雪落在最前面；小圖裡的雷雨只下大雨，不閃也不打雷 */
+  if(kind === 'rain' || kind === 'storm') mountPrecip(s, 'rain', kind === 'storm' ? 1 : 0.6);
+  if(kind === 'snow') mountPrecip(s, 'snow', 0.6);
   if(tags && tags.length){
     var row = el('div','position:absolute;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px');
     tags.forEach(function(tx){ row.appendChild(el('span', TAG_ON_IMG, tx)); });
@@ -399,9 +508,65 @@ function hero(title, sub){
 /* 綠光圓盤：讓主角（樹、年輪）站在上面，呼應參考圖帳篷下的發光平台 */
 function glowStage(h){
   var stage = el('div','position:relative;height:'+h+'px');
-  stage.appendChild(el('div','position:absolute;left:50%;top:46%;width:280px;height:280px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.28) 0%,rgba(123,227,111,0) 66%);animation:th-glow 6s ease-in-out infinite'));
-  stage.appendChild(el('div','position:absolute;left:50%;bottom:24px;width:270px;height:62px;transform:translateX(-50%);border-radius:50%;border:1px solid rgba(123,227,111,.45);background:radial-gradient(ellipse at center,rgba(123,227,111,.22) 0%,rgba(123,227,111,.05) 62%,rgba(123,227,111,0) 76%)'));
+  stage.appendChild(el('div','position:absolute;left:50%;top:46%;width:280px;height:280px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.28) 0%,rgba(123,227,111,0) 66%);animation:th-halo 12s ease-in-out infinite'));
+  groundRing(stage, 24, 270, 62);
   return stage;
+}
+/* 地上的光圈：跟著呼吸一縮一放，吐氣時再往外漾開一圈 */
+function groundRing(parent, bottom, w, h){
+  var base = 'position:absolute;left:50%;bottom:'+bottom+'px;width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
+  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.35);animation:th-ripple 12s ease-out infinite'));
+  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite'));
+}
+/* 抵達畫面的主視覺：大一點的樹站在畫面中間，光圈呼吸，旁邊有細小的光點慢慢往上飄 */
+function arrivalStage(){
+  var st = el('div','position:relative;flex:1;min-height:400px;margin:4px -18px 0');
+  st.appendChild(el('div','position:absolute;left:50%;top:46%;width:440px;height:440px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.26) 0%,rgba(123,227,111,.08) 42%,rgba(123,227,111,0) 68%);animation:th-halo 12s ease-in-out infinite'));
+  mountMotes(st);
+  var GROUND = 54;
+  groundRing(st, GROUND, 300, 70);
+  var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;transform:translateX(-50%)');
+  var sway = el('div','transform-origin:50% 100%;animation:th-sway 14s ease-in-out infinite');
+  sway.appendChild(fullTree('position:relative;display:block;height:340px;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))'));
+  holder.appendChild(sway); st.appendChild(holder);
+  return st;
+}
+/* 光點：像山上空氣裡的微光，慢慢往上飄、忽明忽暗；離開畫面就停 */
+function mountMotes(root){
+  var cv = document.createElement('canvas');
+  cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
+  cv.setAttribute('aria-hidden','true');
+  root.appendChild(cv);
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var motes = [], last = performance.now();
+  function spawn(w, h, anywhere){
+    var spread = (Math.random() + Math.random() + Math.random()) / 3;   /* 靠近樹的地方多一點 */
+    return { x:w*(0.12 + spread*0.76), y:anywhere ? h*(0.15 + Math.random()*0.8) : h*(0.82 + Math.random()*0.1),
+             r:0.6 + Math.random()*1.4, v:5 + Math.random()*9, ph:Math.random()*6.283, sp:0.6 + Math.random()*1.4,
+             lime:Math.random() < 0.55 };
+  }
+  function frame(nowT){
+    if(!cv.isConnected) return;
+    var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+    if(!motes.length) for(var i=0;i<28;i++) motes.push(spawn(w, h, true));
+    var dt = Math.min(0.05, (nowT - last)/1000); last = nowT;
+    var g = cv.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+    motes.forEach(function(m, i){
+      if(!still){ m.y -= m.v*dt; m.x += Math.sin(nowT*0.0006*m.sp + m.ph)*6*dt; }
+      if(m.y < h*0.06) motes[i] = m = spawn(w, h, false);
+      var edge = Math.min(1, (m.y - h*0.06)/(h*0.25));   /* 越往上越淡 */
+      var a = edge * (0.35 + 0.45*(0.5 + 0.5*Math.sin(nowT*0.002*m.sp + m.ph)));
+      var grd = g.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r*4);
+      var col = m.lime ? '165,234,152' : '242,246,240';
+      grd.addColorStop(0, 'rgba('+col+','+a+')');
+      grd.addColorStop(1, 'rgba('+col+',0)');
+      g.fillStyle = grd; g.beginPath(); g.arc(m.x, m.y, m.r*4, 0, 6.283); g.fill();
+    });
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
 
 /* ── 樹旁邊的聲音：Web Audio 即時合成，不用錄音檔 ─────────────
@@ -945,13 +1110,18 @@ function screen1(){
 function screen2(){
   var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','2 樹的日常');
-  root.appendChild(subHeader('樹的日常', '8月2日 · 06:12 送達'));
+  var tree = myTree(), m = morningText(tree), w = m.w;
+  var md = w.date.split('-');
+  root.appendChild(subHeader('樹的日常', (+md[1]) + '月' + (+md[2]) + '日 · ' + w.sunrise + ' 跟日出一起送達'));
 
   var card = el('div', CARD + ';margin-top:18px;padding:10px 10px 12px');
-  card.appendChild(miniScene(180, [WX_HEADER[wx()], '日出 05:31']));   /* 這封晨報有日期，天氣跟著內文的霧，不換成現在的天氣 */
+  card.setAttribute('data-morning', w.kind);
+  card.appendChild(miniScene(180, [w.label + ' · ' + w.temp + '°C', '日出 ' + w.sunrise], w.kind));
   var body = el('div','padding:18px 10px 4px;font-size:15.5px;line-height:1.85;color:'+C.text);
-  body.innerHTML = '早安。霧在天亮前就上來了，山雀比平常晚了十分鐘才叫。我數了一下，昨晚一共落了三片葉子。<br><br>你今天好嗎？如果有時間，我們一起來練習五分鐘的呼吸。';
+  body.appendChild(el('div', null, m.para1));
+  body.appendChild(el('div','margin-top:14px', m.para2));
   card.appendChild(body);
+  card.appendChild(el('div','padding:12px 10px 0;font-size:12px;color:'+C.text3, '— ' + tree.name + '，' + FORESTS[tree.forest].short));
   var foot = el('div','padding:14px 2px 0');
   foot.appendChild(button(BTN_PRIMARY, '我準備好了 →', go(4), 'background:#E7F1E4'));
   card.appendChild(foot);
@@ -1205,13 +1375,10 @@ function screen0(){
     });
     head.appendChild(tags);
     root.appendChild(head);
-    var stage = glowStage(300);
-    stage.style.margin = 'auto 0 0';
-    stage.appendChild(fullTree('left:50%;bottom:40px;height:250px;transform:translateX(-50%);filter:drop-shadow(0 0 18px rgba(123,227,111,.45))'));
-    root.appendChild(stage);
-    root.appendChild(el('div','font-size:54px;font-weight:300;letter-spacing:10px;line-height:1;color:'+C.text+';text-align:center;margin-top:6px','樹洞'));
-    root.appendChild(el('div','font-size:15px;color:'+C.text2+';text-align:center;margin-top:16px','把心事說給一棵真的樹聽。'));
-    var go1 = el('div','margin-top:28px');
+    root.appendChild(arrivalStage());
+    root.appendChild(el('div','font-size:52px;font-weight:300;letter-spacing:10px;line-height:1;color:'+C.text+';text-align:center', APP.name));
+    root.appendChild(el('div','font-size:15px;color:'+C.text2+';text-align:center;margin-top:14px', APP.tagline));
+    var go1 = el('div','margin-top:26px');
     /* 這一下點擊順便打開聲音：之後揭曉樹洞時，聲音才放得出來 */
     go1.appendChild(button(BTN_PRIMARY, '開始', function(){ var c = sndCtx(); if(c && c.resume) c.resume(); S.onb.step = 'about'; renderScreen(); }, 'background:#E7F1E4'));
     root.appendChild(go1);
@@ -1303,7 +1470,7 @@ function screen4(){
   root.appendChild(subHeader('樹的邀請'));
 
   var inv = el('div', CARD + ';margin-top:18px;padding:10px 10px 18px');
-  inv.appendChild(miniScene(150, [myForest().short + ' ' + myForest().name, myTree().name].concat(wxShort() ? ['現在 ' + wxShort()] : [])));
+  inv.appendChild(miniScene(150, [myForest().short + ' ' + myForest().name, myTree().name].concat(wxShort() ? ['現在 ' + wxShort()] : []), nowWeather(curTod()).kind));
   var invBody = el('div','padding:16px 10px 0');
   invBody.appendChild(el('div', EYEBROW, '出門走走'));
   invBody.appendChild(el('div','font-size:17px;line-height:1.75;color:'+C.text+';margin-top:8px','這週末，來看我嗎？不用帶什麼，山上什麼都有。'));
@@ -1343,7 +1510,7 @@ function screen5(){
   card.appendChild(el('div','position:absolute;left:-30%;bottom:-14px;width:160%;height:96px;background:#11281A;border-radius:50% 50% 0 0'));
   card.appendChild(el('div','position:absolute;left:10%;bottom:-26px;width:140%;height:72px;background:#0A1A10;border-radius:50% 50% 0 0'));
   var inner = el('div','position:relative;height:100%;display:flex;flex-direction:column');
-  inner.appendChild(el('div','font-size:11px;color:'+C.text3,'樹洞 · 真的樹，真的聽'));
+  inner.appendChild(el('div','font-size:11px;color:'+C.text3, APP.name + ' · ' + APP.motto));
   var quote = el('div','font-size:36px;line-height:1.18;color:'+C.text+';margin-top:auto');
   quote.appendChild(el('span','font-weight:300','這棵樹'));
   quote.appendChild(document.createElement('br'));
@@ -1670,6 +1837,8 @@ function setScreen(n){
 }
 
 /* ── 啟動 ───────────────────────────────────────────────── */
+document.getElementById('appName').textContent = APP.name;
+document.title = APP.name + ' · 互動原型';
 /* 預設從第一次打開開始；?screen=1 之類的網址參數可以直接跳到某個畫面 */
 (function(){ var q = QS.get('screen'); if(q !== null && q !== '' && !isNaN(+q) && BUILDERS[+q]) S.screen = +q; })();
 renderSidebar(); renderTabs(); renderScreen();
