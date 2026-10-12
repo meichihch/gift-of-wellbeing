@@ -20,6 +20,9 @@
   @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.04);opacity:0}54%{opacity:.5}100%{transform:translateX(-50%) scale(1.65);opacity:0}}
   @keyframes th-halo{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.6}33%,50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
   @keyframes th-sway{0%,100%{transform:rotate(-.6deg)}50%{transform:rotate(.6deg)}}
+  /* 樹上的名牌：跟呼吸同一個節奏輕輕放大、變亮 */
+  @keyframes th-tag{0%,100%{transform:translateX(-50%) scale(.95);opacity:.7}33%,50%{transform:translateX(-50%) scale(1.04);opacity:1}}
+  @keyframes th-dot{0%,100%{transform:translate(-50%,50%) scale(.8);opacity:.5}33%,50%{transform:translate(-50%,50%) scale(1.3);opacity:1}}
   @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
   #app input::placeholder{color:rgba(242,246,240,.42)}
   #app *{scrollbar-width:none}
@@ -741,6 +744,41 @@ function groundRing(parent, bottom, w, h){
   var base = 'position:absolute;left:50%;bottom:'+bottom+'px;width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
   parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.35);animation:th-ripple 12s ease-out infinite'));
   parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite'));
+}
+/* 一片森林：後排的樹小而淡，前排幾棵比較清楚，頭上掛著名牌（名字、樹種、年紀）。
+   名牌跟地上的光圈一樣用呼吸的節奏，彼此錯開一點，像各自在呼吸 */
+function forestTeaser(ids){
+  var st = el('div','position:relative;flex:1;min-height:300px;margin:6px -18px 0;overflow:hidden');
+  st.appendChild(el('div','position:absolute;left:0;right:0;bottom:0;height:46%;background:radial-gradient(70% 60% at 50% 100%,rgba(123,227,111,.16) 0%,rgba(123,227,111,0) 70%)'));
+  mountMotes(st);
+  var GROUND = 26;
+  var plant = function(x, ht, style){
+    var w = el('div','position:absolute;left:'+x+'%;bottom:'+GROUND+'px;transform:translateX(-50%)');
+    w.appendChild(fullTree('position:relative;display:block;height:'+ht+'px;' + style));
+    st.appendChild(w);
+  };
+  /* 後排 */
+  [[8, 124], [30, 146], [44, 114], [66, 138], [93, 120]].forEach(function(b){
+    plant(b[0], b[1], 'opacity:.22');
+  });
+  /* 前排：掛名牌的三棵，高度錯開，名牌才不會擠在一起 */
+  var front = [[19, 196], [52, 248], [83, 182]];
+  ids.forEach(function(id, i){
+    var tr = TREES[id], x = front[i][0], ht = front[i][1];
+    plant(x, ht, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))');
+    var topY = GROUND + ht - 6;   /* 樹梢的高度（從底部算） */
+    var delay = (-i * 1.6) + 's';
+    st.appendChild(el('div','position:absolute;left:'+x+'%;bottom:'+topY+'px;width:6px;height:6px;border-radius:50%;background:'+C.lime+';box-shadow:0 0 8px rgba(123,227,111,.8);animation:th-dot 12s ease-in-out '+delay+' infinite'));
+    var tag = el('div','position:absolute;left:'+x+'%;bottom:'+(topY + 3)+'px;display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:th-tag 12s ease-in-out '+delay+' infinite');
+    tag.setAttribute('data-tree-tag', id);
+    var pill = el('div','padding:6px 11px 7px;border-radius:14px;text-align:center;white-space:nowrap;background:rgba(12,28,19,.55);border:1px solid rgba(123,227,111,.38);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)');
+    pill.appendChild(el('div','font-size:13px;font-weight:500;color:'+C.text, tr.name));
+    pill.appendChild(el('div','font-size:10.5px;color:'+C.text2+';margin-top:1px', tr.species + ' · ' + tr.age));
+    tag.appendChild(pill);
+    tag.appendChild(el('div','width:1px;height:10px;background:rgba(123,227,111,.5)'));
+    st.appendChild(tag);
+  });
+  return st;
 }
 /* 抵達畫面的主視覺：大一點的樹站在畫面中間，光圈呼吸，旁邊有細小的光點慢慢往上飄 */
 function arrivalStage(){
@@ -1572,7 +1610,7 @@ function screen3(){
   return root;
 }
 
-/* ── 第一次打開：抵達 → 先說清楚 → 讓心情帶路 → 三個樹洞 → 隱私承諾 → 樹先開口 ── */
+/* ── 第一次打開：抵達 → 認識這些樹 → 讓心情帶路 → 三個樹洞 → 隱私承諾 → 樹先開口 ── */
 function onbGo(step){ return function(){ stopSound(); S.onb.step = step; renderScreen(); }; }
 function finishOnboarding(){
   var tree = TREES[S.onb.pick] || TREES.t28;
@@ -1615,23 +1653,12 @@ function screen0(){
     var bb = button(CIRCLE, '‹', onbGo('arrive'), 'background:rgba(255,255,255,.14)');
     bb.setAttribute('aria-label','上一步');
     back.appendChild(bb); root.appendChild(back);
-    root.appendChild(el('div', EYEBROW + ';margin-top:34px', '先說清楚'));
+    root.appendChild(el('div', EYEBROW + ';margin-top:30px', '認識這些樹'));
     root.appendChild(el('div','font-size:24px;font-weight:300;line-height:1.7;letter-spacing:.5px;color:'+C.text+';margin-top:14px',
       '這裡的每個樹洞，都代表一棵真的樹。它們長在台灣的山裡，有編號、有年紀，會與你分享山上的天氣和聲音。'));
-    /* 舉三棵真的樹當例子：一座森林一棵 */
-    var ex = el('div','display:flex;flex-direction:column;gap:8px;margin-top:28px');
-    ['t2', 'l18', 'd2'].forEach(function(id){
-      var tr = TREES[id], f = FORESTS[tr.forest];
-      var row = el('div', GLASS + ';border-radius:18px;display:flex;align-items:center;gap:12px;padding:10px 14px');
-      row.appendChild(treeAvatar(36));
-      var tx = el('div','flex:1;min-width:0');
-      tx.appendChild(el('div','font-size:14px;color:'+C.text, f.short + ' ' + tr.name));
-      tx.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:2px', tr.species + ' · ' + tr.age));
-      row.appendChild(tx);
-      ex.appendChild(row);
-    });
-    root.appendChild(ex);
-    var bw = el('div','display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:28px');
+    /* 一小片森林，前排三棵掛著名牌（一座森林一棵），不是選項 */
+    root.appendChild(forestTeaser(['t2', 'l18', 'd2']));
+    var bw = el('div','display:flex;flex-direction:column;gap:10px;padding-top:8px');
     bw.appendChild(button(BTN_PRIMARY, '好，幫我找一棵', function(){ resetFind(); S.onb.step = 'quiz'; renderScreen(); }, 'background:#E7F1E4'));
     bw.appendChild(button(BTN_GLASS, '我想自己逛逛森林', function(){ resetFind(); S.onb.step = 'browse'; renderScreen(); }, 'background:rgba(255,255,255,.14)'));
     root.appendChild(bw);
