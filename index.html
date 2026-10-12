@@ -144,9 +144,9 @@ var S = {
   toast:'', replyCount:0, sceneMuted:false,
   /* 每棵樹各自一段對話；阿檜這段是示範用的舊對話 */
   chats:{ t28:[
-    {isTree:true, hasImg:true, text:'早安，今天山上起霧了，有種清新的美感。我想分享給你', time:'06:12 · 跟日出一起送達'},
+    {isTree:true, hasImg:true, text:'早安，今天山上起霧了，空氣很好。給你看看。', time:'06:12 · 晨報'},
     {isMe:true, text:'今天好沒動力起床，最近的事一件接著一件來。', time:'06:47'},
-    {isTree:true, text:'我理解你最近的難處。跟你說個我的事：我被雷劈過兩次，樹幹裡空了一塊，到現在也沒補起來。不過我還站得好好的，那個洞裡現在住著一窩山雀。', time:'06:12'}
+    {isTree:true, text:'事情一件接一件，真的會累。跟你說個我的事：我被雷劈過兩次，樹幹裡空了一塊，到現在都沒長回來。不過我還是站得好好的，那個洞裡現在還住了一窩山雀。', time:'06:12'}
   ]}
 };
 function chat(){ return S.chats[S.myTree] || (S.chats[S.myTree] = []); }
@@ -197,35 +197,35 @@ var TREES = {
         happy:'早上的霧散得剛剛好，陽光從樹縫照下來。一千多年了，我還是喜歡這個時候。'},
   t2:  {id:'t2',  forest:'alishan', name:'2 號巨木', num:'2 號',  species:'紅檜', age:'1,515 歲', elev:'海拔 2,204m',
         fact:'林業署重新量過，是量過的巨木裡最老的',
-        line:'「林業署重新量過，我一千五百一十五歲，是他們量過最老的。你說的不會嚇到我。」',
-        happy:'昨天風很大，可是我一根枝子都沒掉。活到一千五百歲，這種小事還是會讓我得意一下。'},
+        line:'「林業署重新量過，我一千五百一十五歲，是他們量過最老的。活這麼久，什麼事都聽過，你儘管說。」',
+        happy:'昨天風很大，可是我一根樹枝都沒斷。活到一千五百歲，這種小事還是會讓我得意一下。'},
   t28: {id:'t28', forest:'alishan', name:'阿檜',     num:'28 號', species:'紅檜', age:'1,095 歲', elev:'海拔 2,173m',
         fact:'好幾棵紅檜長在一起，胸圍 13.1 公尺',
-        line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」',
+        line:'「我其實是好幾棵樹長在一起的，所以很習慣有伴。」',
         happy:'好。上禮拜有一窩山雀，搬進我被雷劈出來的那個洞裡，每天早上吵得不得了。一千年了，我還是會為這種小事高興。'},
   l24: {id:'l24', forest:'lala', name:'24 號巨木', num:'24 號', species:'紅檜', age:'1,495 歲',
         fact:'四棵紅檜長在一起，拉拉山最老的一棵',
-        line:'「我是四棵紅檜長在一起的。一個人來也沒關係，在我這裡不會只有你一個。」',
+        line:'「我是四棵紅檜長在一起的，在拉拉山年紀最大。有什麼想說的，說給我們四個聽。」',
         happy:'我們四棵今年又一起冒了新芽。長在一起這麼久，還是會為這種事高興。'},
   l17: {id:'l17', forest:'lala', name:'17 號巨木', num:'17 號', species:'紅檜', age:'1,478 歲',
         fact:'沒有跟別的樹合在一起，自己一棵長到現在',
-        line:'「我是自己一棵長到現在的，一千四百多年。你想安靜待著，我很懂。」',
+        line:'「我是自己一棵長到現在的，一千四百多年了。想安靜一下的話，來我這裡剛好。」',
         happy:'今天林子裡很安靜，只有我跟幾隻鳥。這種日子我最喜歡。'},
   l18: {id:'l18', forest:'lala', name:'18 號巨木', num:'18 號', species:'紅檜', age:'1,214 歲',
         fact:'胸圍 20.8 公尺，要十三個人才抱得住',
-        line:'「我的腰圍有二十公尺，要十三個人才抱得住。你說多少，我都裝得下。」',
+        line:'「我的腰圍有二十公尺，要十三個人手牽手才抱得住。你想說多久都可以。」',
         happy:'今天有一群小朋友手牽手想抱住我，差一點點就抱滿了。'},
   l5:  {id:'l5',  forest:'lala', name:'5 號巨木', num:'5 號',  species:'紅檜', age:'848 歲',
         fact:'以前被說有 2,800 歲，重新量過才知道是 848 歲',
-        line:'「以前大家說我兩千八百歲，重新量過才知道是八百多歲。被看錯也沒關係，我還是我。」',
+        line:'「以前大家都說我兩千八百歲，重新量過才知道是八百多歲。一下少了兩千歲，我倒覺得輕鬆不少。」',
         happy:'有人在我前面說：「原來你才八百多歲，還年輕嘛。」我聽了很開心。'},
   d1:  {id:'d1',  forest:'dxs', name:'雪山神木', num:'雪山', species:'紅檜', age:'1,095 歲',
         fact:'九棵紅檜長在一起，在大雪山林道的盡頭',
         line:'「我是九棵紅檜長在一起的。林道走到底才看得到我，你在這裡說，我一樣聽得到。」',
-        happy:'今天山上很清楚，看得到好遠。九棵一起站在這裡，風景是大家的。'},
+        happy:'今天天氣很好，看得好遠。我們九棵擠在一起看，誰也不讓誰。'},
   d2:  {id:'d2',  forest:'dxs', name:'小神木', num:'小神木', species:'紅檜', age:'1,160 歲',
         fact:'名字叫小神木，其實比雪山神木還老',
-        line:'「大家叫我小神木，其實我比雪山神木還老。名字小，不代表裝不下。」',
+        line:'「大家叫我小神木，其實我比雪山神木還老。名字是別人取的，我也懶得改了。」',
         happy:'今天有一隻藍腹鷴從我腳邊走過去，慢慢的，一點都不怕人。'}
 };
 /* 分數一樣時的順序：「請推薦我」又沒有方向時，第一張卡是阿檜 */
@@ -244,11 +244,11 @@ var QUIZ = [
     {label:'下不停的雨',     trees:['t2', 'l18', 'l24']},
     {label:'悶悶的、沒有風', trees:['t1', 'l5', 'd2']},
     {label:'晴空萬里',       trees:['t28', 'd2', 'l24']}]},
-  {title:'你需要什麼陪伴？', opts:[
+  {title:'今天比較想要哪一種？', opts:[
     {label:'聽樹說它的故事', trees:['t2', 'l5', 'd2']},
     {label:'聽山上的聲音',   trees:[], branch:'sound'},   /* 只負責把第三題轉成聲音問題，自己不投票 */
     {label:'我需要樹洞',     trees:['t28', 'l18', 'l17']}]},
-  {title:'現在的你，想找什麼樣的樹？', opts:[
+  {title:'你想找什麼樣的樹？', opts:[
     {label:'沒有特別的想法，請推薦我', trees:[]},   /* 不投票，交給前兩題的心情決定 */
     {label:'什麼都見過的老樹',       trees:['t2', 'l24', 'l17']},
     {label:'好幾棵長在一起的',       trees:['t28', 'l24', 'l18', 'd1']}]}
@@ -288,10 +288,10 @@ var SCENES = {
   '晨':{sky:'linear-gradient(180deg,#1C3A2C 0%,#4F7461 38%,#9DB8A0 68%,#C9D8C3 100%)', hillA:'#355A43', hillB:'#1B3527', fog:.45, star:0,   temp:'現在 · 14°C · 起霧',        sound:'環境音：霧滴 · 山雀（近）· 風很輕'},
   '午':{sky:'linear-gradient(180deg,#1F4A33 0%,#4C8061 40%,#9CC4A0 72%,#CFE3C7 100%)', hillA:'#2E5C3F', hillB:'#173323', fog:.14, star:0,   temp:'現在 · 19°C · 多雲',        sound:'環境音：蟬（遠）· 風吹過樹冠'},
   '暮':{sky:'linear-gradient(180deg,#1A241B 0%,#4B4A31 40%,#A9773F 70%,#D9A868 100%)', hillA:'#2E3A28', hillB:'#18221A', fog:.18, star:0,   temp:'現在 · 16°C · 風轉強',      sound:'環境音：晚風 · 山雀歸巢'},
-  '夜':{sky:'linear-gradient(180deg,#06100B 0%,#0E2118 60%,#173426 100%)',              hillA:'#0D1D14', hillB:'#08130D', fog:.06, star:.85, temp:'現在 · 9°C · 晴 · 可見星空', sound:'環境音：蟲鳴 · 貓頭鷹（遠）'}
+  '夜':{sky:'linear-gradient(180deg,#06100B 0%,#0E2118 60%,#173426 100%)',              hillA:'#0D1D14', hillB:'#08130D', fog:.06, star:.85, temp:'現在 · 9°C · 晴 · 看得到星星', sound:'環境音：蟲鳴 · 貓頭鷹（遠）'}
 };
 
-var WX_HEADER = {'起霧':'起霧 · 14°C · 有輕柔的微風','下雨':'下雨 · 12°C · 下著細雨','晴朗':'晴朗 · 21°C · 陽光照進了樹冠'};
+var WX_HEADER = {'起霧':'起霧 · 14°C · 微風','下雨':'下雨 · 12°C · 毛毛雨','晴朗':'晴 · 21°C'};
 var WX_LINE   = {'起霧':'山上的霧還沒散，','下雨':'我這裡也在下雨，','晴朗':'今天山上很亮，'};
 
 /* ── 晨報文案：跟著「我的樹」那座山今天日出時的天氣寫 ─────────────
@@ -302,37 +302,37 @@ var MORNING_OPEN = {
           '早安。天一亮就看得很遠，一朵雲都沒有。',
           '早安。今天是好天氣，陽光從東邊的稜線照過來。'],
   partly:['早安。今天有太陽，也有幾朵雲慢慢飄過去。',
-          '早安。雲來來去去，陽光一陣一陣地照下來。'],
+          '早安。雲來來去去，太陽一陣一陣的。'],
   cloudy:['早安。今天雲比較厚，光線很柔，看什麼都不刺眼。',
           '早安。天空灰灰的，林子裡比平常安靜。'],
   fog:   ['早安。霧在天亮前就上來了，十幾步外的樹都看不清楚。',
           '早安。今天山上起霧，我的樹梢都在霧裡。'],
   rain:  ['早安。山上從清晨就在下雨，每片葉子都在滴水。',
-          '早安。今天下雨，雨打在樹冠上，聲音很密。'],
+          '早安。今天下雨，雨打在樹上，滴滴答答的。'],
   storm: ['早安。天亮的時候在打雷，雨下得很大。這種天氣我遇過很多次了，站得很穩。',
           '早安。今天山上有雷雨，雷聲從山谷那邊傳過來。我很好，不用擔心我。'],
-  snow:  ['早安。山上下雪了，枝子上積了薄薄一層白。',
+  snow:  ['早安。山上下雪了，樹枝上積了薄薄一層雪。',
           '早安。今天早上下雪，整片林子都變安靜了。']
 };
 /* 這座林子那天早上的樣子：亮（晴、晴時多雲）、陰、霧、濕（雨、雷雨），雪另外一組 */
 var MORNING_FOREST = {
   alishan:{ bright:['山雀比我還早醒，在棧道邊吵了好一陣子。', '第一批上山的人已經走到棧道了，腳步聲很輕。'],
-            grey:  ['雲壓得很低，棧道的木頭看起來顏色更深了。', '光線很平，每一棵樹的樹皮紋路都看得很清楚。'],
+            grey:  ['雲壓得很低，棧道的木頭看起來顏色更深了。', '沒有太陽，樹皮的紋路反而看得很清楚。'],
             soft:  ['旁邊幾棵老朋友都在霧裡，只看得到影子。', '霧裡聽得到遠遠的火車聲，一下就不見了。'],
             wet:   ['棧道上沒什麼人，只有雨聲。', '樹皮吸飽了水，顏色變得很深。'] },
   lala:   { bright:['陽光照進林子，樹幹上的苔蘚亮亮的。', '林子裡的蕨類都張開了，綠得發亮。'],
             grey:  ['雲停在山頭上，林子裡涼涼的。', '天色暗暗的，苔蘚反而顯得更綠。'],
             soft:  ['雲就從我們中間穿過去，像在林子裡散步。', '這裡本來就常起霧，大家都習慣了，慢慢等它散。'],
-            wet:   ['我們幾棵靠得很近，雨落下來，一起淋。', '雨水順著樹幹流下來，流進底下的苔蘚裡。'] },
+            wet:   ['雨落下來，我們幾棵靠得近，就一起淋。', '雨水順著樹幹流下來，流進底下的苔蘚裡。'] },
   dxs:    { bright:['天一亮鳥就開始叫了，我分得出好幾種。', '有人拿著望遠鏡在步道上等鳥，等得很有耐心。'],
             grey:  ['天色暗一點，鳥叫得比較晚，但還是來了。', '雲壓在稜線上，林道上很安靜。'],
             soft:  ['霧裡有一隻藍腹鷴慢慢走過去，一點聲音都沒有。', '鐵杉和黃檜都在霧裡，只剩下輪廓。'],
             wet:   ['下雨的時候鳥都躲起來了，只剩下雨聲。', '鐵杉的針葉上掛滿了水珠。'] }
 };
 var MORNING_SNOW = ['雪落在針葉上，輕到聽不見。', '地上的落葉都蓋住了，只露出一點點綠。'];
-var MORNING_CLOSE = ['你今天好嗎？有時間的話，我們一起練習五分鐘的呼吸。',
-                     '出門前，要不要先跟我呼吸五次？',
-                     '今天也慢慢來。有空的話，跟我一起呼吸五次。'];
+var MORNING_CLOSE = ['你那邊天氣怎麼樣？有空的話，跟我一起深呼吸五次。',
+                     '出門前，要不要先跟我深呼吸五次？',
+                     '今天也慢慢來。有空的話，跟我一起深呼吸五次。'];
 function feelOf(t){ return t <= 5 ? '很冷' : t <= 12 ? '有點冷' : t <= 18 ? '涼涼的' : '不會冷'; }
 function dayIndex(date){ var d = new Date(date + 'T00:00:00'); return isNaN(d) ? 0 : Math.floor(d.getTime() / 86400000); }
 function pick(arr, seed){ return arr[((seed % arr.length) + arr.length) % arr.length]; }
@@ -1108,7 +1108,7 @@ function msgNode(m){
     bub  = el('div', GLASS + ';border-radius:6px 22px 22px 22px;padding:13px 16px;font-size:15px;line-height:1.75;color:'+C.text, m.text);
     if(m.hasImg){
       /* 這是畫出來的山景，不是影像：標籤只寫那時的天氣，不宣稱「即時影像」 */
-      var sc = miniScene(132, ['今晨 06:10 · 起霧 · 14°C']);
+      var sc = miniScene(132, ['早上 06:10 · 起霧 · 14°C']);
       sc.style.marginTop = '12px';
       bub.appendChild(sc);
     }
@@ -1156,9 +1156,9 @@ function setThinking(on){
 function chipReply(v){
   if(v === '說說今天')     return '好，今天過得怎麼樣？想到什麼就說什麼。';
   if(v === '只是想來坐坐') return '好啊，坐吧。'+wxLine()+'不說話也沒關係。';
-  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的時候不用說太多，坐一下就好。我在這裡站很久了，急不來的事，我最懂。';
+  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的話就少說一點，坐一下也好。';
   if(v.indexOf('開心')>= 0) return myTree().happy;
-  if(v.indexOf('樹洞')>= 0) return '好，我收著了。樹洞很深，放得下。不用回頭看。';
+  if(v.indexOf('樹洞')>= 0) return '好，我聽到了。還有想說的，就繼續說。';
   return null;
 }
 /* 樹先開口：自我介紹＋它那座山現在的天氣 */
@@ -1189,14 +1189,14 @@ function send(text){
   if(S.chips){ S.chips = null; if(ui.chips){ ui.chips.remove(); ui.chips = null; } }
 
   pushMsg({isMe:true, text:v, time:now()});
-  pushMsg({isNote:true, text:'收到了，讓我想一想。'});
+  pushMsg({isNote:true, text:'收到了'});
   setThinking(true);
 
   t(function(){
     setThinking(false);
     var pool = [
       '嗯，我聽著。'+wxLine()+'不用整理好再說，想到哪，說到哪就可以。',
-      '我把這句收進年輪裡了。'+wxLine()+'風很輕，你慢慢說。'
+      '好，我記下來了。'+wxLine()+'你慢慢說，不用急。'
     ];
     var r = chipReply(v) || pool[S.replyCount % pool.length];
     S.replyCount++; S.gained += 1;
@@ -1205,8 +1205,8 @@ function send(text){
     if(S.firstChat){
       S.firstChat = false;
       t(function(){
-        pushMsg({isTree:true, time:now(), text:'對了，明天早上要不要我跟日出一起，寄一封晨報給你？說說山上那時候的樣子。',
-          actions:[{id:'morning-yes', label:'好啊',   reply:'好，明天日出的時候見。'},
+        pushMsg({isTree:true, time:now(), text:'對了，明天早上太陽出來的時候，要不要我寫封晨報給你？跟你說說山上的樣子。',
+          actions:[{id:'morning-yes', label:'好啊',   reply:'好，明天早上見。'},
                    {id:'morning-no',  label:'先不用', reply:'好。想看的時候，點上面的「今天的晨報」就有。'}]});
       }, 1600);
     }
@@ -1214,7 +1214,7 @@ function send(text){
 }
 
 /* ── 呼吸練習：五次就好，做完自動停下；年輪安靜地長，不在畫面上計數 ── */
-var PHASES = [['吸氣',4,1.32], ['停住',2,1.32], ['慢慢吐',6,1]];
+var PHASES = [['吸氣',4,1.32], ['停一下',2,1.32], ['慢慢吐氣',6,1]];
 var BREATH_ROUNDS = 5;
 var PHASE_END = [4/12, 6/12, 1];   /* 各階段結束時在「一次呼吸」裡的進度（4s＋2s＋6s） */
 function paintBreath(){
@@ -1223,7 +1223,7 @@ function paintBreath(){
   ui.bCircle.style.transition = 'transform '+S.bDur+'s cubic-bezier(.4,0,.4,1)';
   ui.bLabel.textContent = S.breathing ? S.phase : (S.bDone ? '完成' : '跟我呼吸');
   ui.bBtn.textContent   = S.breathing ? '停下來' : (S.bDone ? '再一次' : '開始');
-  ui.bNote.textContent  = (S.bDone && !S.breathing) ? '你可以在任何時候跟我一起呼吸。' : '';
+  ui.bNote.textContent  = (S.bDone && !S.breathing) ? '想要的時候，隨時回來跟我一起呼吸。' : '';
   /* 進度條：跟著呼吸節奏連續填滿，五次做完剛好滿 */
   var pct = S.bDone ? 100 : (S.breathing ? ((S.cycles + PHASE_END[S.bIdx]) / BREATH_ROUNDS) * 100 : 0);
   ui.bBar.style.opacity   = (S.breathing || S.bDone) ? '1' : '0';
@@ -1292,15 +1292,15 @@ function ringSvg(){
 function ringStage(){
   var r = rings(), idx = Math.min(3, Math.floor(r/125));
   var lines = [
-    '「一顆種子睡在土裡。慢慢來，我們有的是時間。」',
-    '「發芽了。你最近說的話，都在裡面。」',
-    '「正在抽高，長得比你想的快。再過幾場雨，就差不多了。」',
-    r>=500 ? '「好了。找個好天氣，我們把它種下去。」' : '「就快了。再過幾場雨，就可以移植了。」'
+    '「種子還在土裡，慢慢來。」',
+    '「發芽了，冒出兩片小葉子。」',
+    '「長高了不少，再下幾場雨就差不多了。」',
+    r>=500 ? '「長好了。挑個好天氣，我們把它種下去。」' : '「快了，再下幾場雨就可以移植了。」'
   ];
   return {
     scale: [0.62,0.76,0.9,1][idx],
     op:    [0.45,0.6,0.75,0.9][idx],
-    line:  S.planted ? '「種下去了。接下來，換山來照顧它。」' : lines[idx]
+    line:  S.planted ? '「種下去了，接下來交給山上照顧。」' : lines[idx]
   };
 }
 
@@ -1374,7 +1374,7 @@ function screen2(){
   root.setAttribute('data-screen-label','2 樹的日常');
   var tree = myTree(), m = morningText(tree), w = m.w;
   var md = w.date.split('-');
-  root.appendChild(subHeader('樹的日常', (+md[1]) + '月' + (+md[2]) + '日 · ' + w.sunrise + ' 跟日出一起送達'));
+  root.appendChild(subHeader('樹的日常', (+md[1]) + '月' + (+md[2]) + '日 · 日出 ' + w.sunrise + ' 送到'));
 
   var card = el('div', CARD + ';margin-top:18px;padding:10px 10px 12px');
   card.setAttribute('data-morning', w.kind);
@@ -1389,7 +1389,7 @@ function screen2(){
   card.appendChild(foot);
   root.appendChild(card);
 
-  root.appendChild(el('div','margin-top:16px;font-size:11px;color:'+C.text3+';text-align:center','晨報永遠跟日出一起送達 · 可在「我」裡調整時間'));
+  root.appendChild(el('div','margin-top:16px;font-size:11px;color:'+C.text3+';text-align:center','晨報會在日出時送到 · 時間可以在「我」裡面調'));
   return root;
 }
 
@@ -1483,7 +1483,7 @@ function forestDetail(){
   info.appendChild(el('div','font-size:14.5px;line-height:1.8;color:rgba(242,246,240,.86);margin-top:12px', f.about));
   root.appendChild(info);
 
-  root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:22px 2px 10px','這座林裡的樹洞'));
+  root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:22px 2px 10px','這座森林的樹洞'));
   var list = el('div','display:flex;flex-direction:column;gap:8px');
   treesOf(fid).forEach(function(tree){
     var st = GLASS + ';border-radius:20px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;cursor:pointer;color:'+C.text;
@@ -1509,7 +1509,7 @@ function revealView(ctx){
   var list = S.matches, multi = list.length > 1;
   var root = el('div');
   var f0 = FORESTS[list[0].forest];
-  root.appendChild(subHeader(multi ? '為你找到的樹洞' : list[0].name, multi ? '左右滑動，看看這三棵' : f0.persona, ctx.onBack, multi ? '上一步' : '回到這座林'));
+  root.appendChild(subHeader(multi ? '幫你找到的樹洞' : list[0].name, multi ? '左右滑動，看看這三棵' : f0.persona, ctx.onBack, multi ? '上一步' : '回到這座森林'));
 
   /* 從聲音那條路來的：揭曉時播剛剛選的聲音，可以停 */
   var picked = S.matchedVia === 'quiz' && S.quizPick[2] && S.quizPick[2].sound ? S.quizPick[2] : null;
@@ -1590,21 +1590,21 @@ function screen3(){
       onBack: fromQuiz ? function(){ stopSound(); S.matches = null; S.quizPick.length = 2; renderScreen(); }
                        : function(){ stopSound(); S.matches = null; renderScreen(); },
       onPick: pickTree,
-      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座林的其他樹',
+      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座森林的其他樹',
       onBrowse: fromQuiz ? function(){ stopSound(); resetFind(); S.browse = true; renderScreen(); }
                          : function(){ S.matches = null; renderScreen(); }
     }));
   } else if(S.forestView){
     root.appendChild(forestDetail());
   } else if(S.browse){
-    root.appendChild(subHeader('自己逛逛', '每座森林都有自己的個性', function(){ S.browse = false; renderScreen(); }, '回到讓心情帶路'));
+    root.appendChild(subHeader('自己逛逛', '三座森林，各有各的樣子', function(){ S.browse = false; renderScreen(); }, '回到讓心情帶路'));
     var fl = forestList(); fl.style.marginTop = '18px';
     root.appendChild(fl);
   } else {
-    root.appendChild(hero('森林', '按照現在的心情，為你推薦樹洞。'));
+    root.appendChild(hero('森林', '照你現在的心情，幫你找一個樹洞。'));
     var qc = quizCard(); qc.style.marginTop = '22px';
     root.appendChild(qc);
-    root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:24px 2px 12px','或者，直接走進一座林'));
+    root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:24px 2px 12px','或者，直接去逛森林'));
     root.appendChild(forestList());
   }
   return root;
@@ -1697,14 +1697,14 @@ function screen0(){
       onBack: fromQuiz ? function(){ stopSound(); S.matches = null; S.quizPick.length = 2; renderScreen(); }
                        : function(){ stopSound(); S.matches = null; renderScreen(); },
       onPick: choose,
-      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座林的其他樹',
+      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座森林的其他樹',
       onBrowse: fromQuiz ? function(){ stopSound(); resetFind(); S.onb.step = 'browse'; renderScreen(); }
                          : function(){ S.matches = null; renderScreen(); }
     }));
   } else if(S.forestView){
     root.appendChild(forestDetail());
   } else if(st === 'browse'){
-    root.appendChild(subHeader('自己逛逛', '每座森林都有自己的個性', onbGo('about'), '上一步'));
+    root.appendChild(subHeader('自己逛逛', '三座森林，各有各的樣子', onbGo('about'), '上一步'));
     var fl = forestList(); fl.style.marginTop = '18px';
     root.appendChild(fl);
   } else {
@@ -1724,12 +1724,12 @@ function screen4(){
   inv.appendChild(miniScene(150, [myForest().short + ' ' + myForest().name, myTree().name].concat(wxShort() ? ['現在 ' + wxShort()] : []), nowWeather(curTod()).kind));
   var invBody = el('div','padding:16px 10px 0');
   invBody.appendChild(el('div', EYEBROW, '出門走走'));
-  invBody.appendChild(el('div','font-size:17px;line-height:1.75;color:'+C.text+';margin-top:8px','這週末，來看我嗎？不用帶什麼，山上什麼都有。'));
+  invBody.appendChild(el('div','font-size:17px;line-height:1.75;color:'+C.text+';margin-top:8px','這個週末要不要來看我？不用帶什麼，人來就好。'));
   inv.appendChild(invBody);
   root.appendChild(inv);
 
   var bcard = el('div', CARD + ';margin-top:14px;padding:22px 20px 20px;display:flex;flex-direction:column;align-items:center');
-  bcard.appendChild(el('div','font-size:13px;color:'+C.text2+';align-self:flex-start','或者，現在跟我呼吸五次就好。'));
+  bcard.appendChild(el('div','font-size:13px;color:'+C.text2+';align-self:flex-start','沒空上山的話，現在跟我深呼吸五次也好。'));
   var holder = el('div','height:210px;display:flex;align-items:center;justify-content:center');
   var circle = el('div','width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 50% 38%,rgba(123,227,111,.55) 0%,rgba(46,120,70,.38) 55%,rgba(20,60,38,.25) 100%);border:1px solid rgba(255,255,255,.18);box-shadow:0 0 60px rgba(123,227,111,.32);display:flex;align-items:center;justify-content:center');
   var label = el('span','font-size:17px;color:'+C.text,'跟我呼吸');
@@ -1768,16 +1768,16 @@ function screen5(){
   quote.appendChild(el('span','font-weight:600','陪我 47 天了'));
   inner.appendChild(quote);
   inner.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:14px',myTree().name + ' · ' + myForest().short + ' · ' + myTree().age));
-  inner.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:22px','點開，看它此刻的山'));
+  inner.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:22px','點開，看它現在的山'));
   card.appendChild(inner);
   root.appendChild(card);
 
   var wrap = el('div','max-width:300px;margin:16px auto 0');
-  wrap.appendChild(button(BTN_PRIMARY, '分享這張卡', function(){ showToast('已產生分享卡連結 · 心事絕不外流'); }, 'background:#E7F1E4'));
+  wrap.appendChild(button(BTN_PRIMARY, '分享這張卡', function(){ showToast('分享連結建好了，卡片上沒有你的心事'); }, 'background:#E7F1E4'));
   root.appendChild(wrap);
 
   var note = el('div','font-size:11px;color:'+C.text3+';text-align:center;margin-top:12px;line-height:1.75');
-  note.innerHTML = '分享卡只有山景和天數。<br>你說過的每一句心事，永遠不會出現在這裡。';
+  note.innerHTML = '分享卡上只有山景和天數，<br>你說過的話不會出現在上面。';
   root.appendChild(note);
   return root;
 }
@@ -1805,7 +1805,7 @@ function screen6(){
     big.appendChild(el('span','font-size:12px;color:'+C.lime+';white-space:nowrap','圈年輪 · 滿了'));
     root.appendChild(big);
     var pw = el('div','margin-top:16px');
-    pw.appendChild(button(BTN_PRIMARY, '種下一棵台灣杉', function(){ S.planted = true; showToast('種下了。苗編號 TW-0047 已寫進你的森林。'); renderScreen(); }, 'background:#E7F1E4'));
+    pw.appendChild(button(BTN_PRIMARY, '種下一棵台灣杉', function(){ S.planted = true; showToast('種下了，樹苗編號 TW-0047'); renderScreen(); }, 'background:#E7F1E4'));
     root.appendChild(pw);
   }
   if(notYet){
@@ -1816,15 +1816,15 @@ function screen6(){
   if(S.planted){
     var pc = el('div', CARD + ';border-color:rgba(123,227,111,.5);margin-top:18px;padding:18px 20px');
     pc.appendChild(el('div', EYEBROW, '已種下 · 2026.08.02'));
-    pc.appendChild(el('div','font-size:20px;font-weight:500;color:'+C.text+';margin-top:8px','台灣杉 · 苗 TW-0047'));
+    pc.appendChild(el('div','font-size:20px;font-weight:500;color:'+C.text+';margin-top:8px','台灣杉 · 樹苗 TW-0047'));
     pc.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:6px;font-variant-numeric:tabular-nums','座標 23.51°N, 120.80°E · 大塔山北坡'));
-    pc.appendChild(el('div','font-size:14px;color:'+C.text+';line-height:1.8;margin-top:10px','心事有了出口，世界多了一棵樹。明年今天，寄它的第一張照片給你。'));
+    pc.appendChild(el('div','font-size:14px;color:'+C.text+';line-height:1.8;margin-top:10px','明年的今天，會寄它的第一張照片給你。'));
     root.appendChild(pc);
   }
 
   var log = el('div','margin-top:22px;display:flex;flex-direction:column;gap:8px');
-  log.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:0 2px 4px','這些日子，都長在年輪裡'));
-  [['連續 21 天，跟日出一起讀晨報','7月'],['第一次用聲音說了心事','6月'],['那個週末，你真的去看了'+myTree().name,'6月']].forEach(function(row){
+  log.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:0 2px 4px','最近記下的事'));
+  [['連續 21 天，早上都有看晨報','7月'],['第一次用語音說心事','6月'],['那個週末，你上山去看了'+myTree().name,'6月']].forEach(function(row){
     var it = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px;white-space:nowrap;font-size:13px;color:'+C.text+';padding:14px 16px;border-radius:18px;' + GLASS);
     it.appendChild(el('span', null, row[0]));
     it.appendChild(el('span','color:'+C.text3+';font-size:11.5px', row[1]));
@@ -2015,7 +2015,7 @@ function screen7(){
   live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:'+C.lime+';animation:th-pulse 3s infinite'));
   live.appendChild(document.createTextNode('LIVE · ' + myForest().short + ' · ' + (myTree().elev || myForest().range)));
   top.appendChild(live);
-  var wxText = w.src === 'default' ? sc.temp : ('現在 · ' + w.temp + '°C · ' + w.label + (starAmt >= 1 ? ' · 可見星空' : ''));
+  var wxText = w.src === 'default' ? sc.temp : ('現在 · ' + w.temp + '°C · ' + w.label + (starAmt >= 1 ? ' · 看得到星星' : ''));
   top.appendChild(el('span', TAG_ON_IMG, wxText));
   root.appendChild(top);
   root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text, myTree().name + '的山'));
