@@ -2,7 +2,10 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14301F">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>樹洞 · 互動原型</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -30,6 +33,16 @@
   button:focus-visible{outline:2px solid #7BE36F;outline-offset:2px}
   .stage{min-height:100vh;display:flex;align-items:center;justify-content:center;gap:72px;padding:48px 32px;flex-wrap:wrap}
   @media (max-width:880px){.stage{gap:32px;padding:24px 16px}.side{width:100%!important;max-width:402px}}
+  /* 分享版（<html data-share>）：沒有側欄，只有手機。
+     桌機上是置中的手機外框；手機上直接全螢幕，拿掉假的瀏海、狀態列和底部橫條 */
+  html[data-share] .side{display:none!important}
+  html[data-share] .stage{padding:24px 16px;gap:0}
+  @media (max-width:520px){
+    html[data-share] body{background:#0B1A12}
+    html[data-share] .stage{padding:0;min-height:100vh;min-height:100dvh;display:block}
+    html[data-share] #device{width:100vw!important;height:100vh!important;height:100dvh!important;border-radius:0!important;box-shadow:none!important;zoom:1!important}
+    html[data-share] #device > div:not(#app){display:none!important}
+  }
 </style>
 </head>
 <body>
@@ -80,6 +93,8 @@
 
 /* ── 產品名稱：只改這裡，抵達畫面、分享卡、側欄、分頁標題都會跟著換 ──
    「樹洞」同時也是每一棵樹的通稱（「找樹洞」「三個樹洞」），那些字不跟著產品名改 */
+/* 分享版：<html data-share> 時不顯示側欄與任何檢閱用的控制 */
+var SHARE = document.documentElement.hasAttribute('data-share');
 var APP = { name:'樹洞', tagline:'把心事說給一棵真的樹聽。', motto:'真的樹，真的聽' };
 
 /* ── 字體預覽：側欄可以即時切換手機裡的字體 ─────────────────
@@ -109,7 +124,7 @@ function applyFont(key){
   FONT_KEY = f.key;
   loadFontCss(f);
   document.getElementById('app').style.fontFamily = fontStack(f);
-  try{ localStorage.setItem('th-font', f.key); }catch(e){}
+  if(!SHARE){ try{ localStorage.setItem('th-font', f.key); }catch(e){} }
   renderFontPicker();
 }
 function renderFontPicker(){
@@ -2040,6 +2055,7 @@ var BUILDERS = [screen0, screen1, screen2, screen3, screen4, screen5, screen6, s
 /* ── chrome：側欄、浮動分頁列 ───────────────────────────── */
 function renderSidebar(){
   var host = document.getElementById('screenList');
+  if(!host || SHARE) return;
   host.innerHTML = '';
   LABELS.forEach(function(label, i){
     var n = i, a = S.screen === n;
@@ -2088,11 +2104,19 @@ function setScreen(n){
 }
 
 /* ── 啟動 ───────────────────────────────────────────────── */
-document.getElementById('appName').textContent = APP.name;
+if(document.getElementById('appName')) document.getElementById('appName').textContent = APP.name;
 /* 字體：先把每個選項的字體表載進來，按鈕才能用自己的字體顯示；?font=wenkai 可以直接指定 */
-FONTS.forEach(loadFontCss);
-(function(){ var k = QS.get('font'); if(!k){ try{ k = localStorage.getItem('th-font'); }catch(e){} } applyFont(k || 'noto'); })();
-document.title = APP.name + ' · 互動原型';
+/* 分享版不預載其他字體、也不讀本機記住的選擇，只認網址上的 ?font= */
+if(!SHARE) FONTS.forEach(loadFontCss);
+(function(){ var k = QS.get('font'); if(!k && !SHARE){ try{ k = localStorage.getItem('th-font'); }catch(e){} } applyFont(k || 'noto'); })();
+document.title = SHARE ? APP.name : (APP.name + ' · 互動原型');
+/* 分享版在桌機上：手機外框依視窗高度等比縮小，矮螢幕也看得到整支手機 */
+function fitDevice(){
+  if(!SHARE) return;
+  var d = document.getElementById('device');
+  d.style.zoom = window.innerWidth <= 520 ? '' : String(Math.min(1, (window.innerHeight - 48) / 874));
+}
+fitDevice(); window.addEventListener('resize', fitDevice);
 /* 預設從第一次打開開始；?screen=1 之類的網址參數可以直接跳到某個畫面 */
 (function(){ var q = QS.get('screen'); if(q !== null && q !== '' && !isNaN(+q) && BUILDERS[+q]) S.screen = +q; })();
 renderSidebar(); renderTabs(); renderScreen();
