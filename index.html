@@ -32,10 +32,10 @@
     <div>
       <div style="font-size:46px;font-weight:300;letter-spacing:6px;line-height:1;color:#0F2418">樹洞</div>
       <div style="font-size:13px;color:#46594B;letter-spacing:3px;margin-top:14px">真的樹 · 真的聽</div>
-      <div style="font-size:12.5px;color:#5C6E60;line-height:1.75;margin-top:14px">把心事說給一棵真的樹聽。七個主要畫面，手機內可直接操作。</div>
+      <div style="font-size:12.5px;color:#5C6E60;line-height:1.75;margin-top:14px">把心事說給一棵真的樹聽。從 00 開始是第一次打開的流程，01–07 是主要畫面，手機內可直接操作。</div>
     </div>
     <div id="screenList" style="display:flex;flex-direction:column;gap:6px"></div>
-    <div style="font-size:11px;color:#7A8A7E;line-height:1.7">畫面 1 可打字（阿檜會回）· 畫面 6 可種樹 · 畫面 7 可切換時段</div>
+    <div style="font-size:11px;color:#7A8A7E;line-height:1.7">畫面 1 可打字（你的樹會回）· 畫面 3 可換一棵樹 · 畫面 6 可種樹</div>
     <div style="font-size:10.5px;color:#8A988D;line-height:1.6">即時天氣資料：<a href="https://open-meteo.com/" target="_blank" rel="noopener" style="color:inherit">Open-Meteo.com</a>（CC BY 4.0）</div>
   </div>
 
@@ -74,16 +74,21 @@ var P = { weather:'起霧', replyDelaySec:3, startRings:487 };
 
 /* ── state ──────────────────────────────────────────────── */
 var S = {
-  screen:1, thinking:false, gained:0, planted:false,
-  quizStep:0, quizPick:[], matched:null,
+  screen:0, thinking:false, gained:0, planted:false,
+  quizStep:0, quizPick:[],
+  matches:null, matchedVia:null, cardIdx:0, forestView:null,   /* 找樹洞：揭曉的樹洞、正在看的森林 */
+  onb:{step:'arrive'},                                          /* 第一次打開走到哪一步 */
+  myTree:'t28', chips:null, firstChat:false, morning:null,
   breathing:false, bDone:false, bIdx:0, phase:'', bScale:1, bDur:4, cycles:0,
   toast:'', replyCount:0, sceneMuted:false,
-  messages:[
+  /* 每棵樹各自一段對話；阿檜這段是示範用的舊對話 */
+  chats:{ t28:[
     {isTree:true, hasImg:true, text:'早安，今天山上起霧了，有種清新的美感。我想分享給你', time:'06:12 · 跟日出一起送達'},
     {isMe:true, text:'今天好沒動力起床，最近的事一件接著一件來。', time:'06:47'},
     {isTree:true, text:'我理解你最近的難處。跟你說個我的事：我被雷劈過兩次，樹幹裡空了一塊，到現在也沒補起來。不過我還站得好好的，那個洞裡現在住著一窩山雀。', time:'06:12'}
-  ]
+  ]}
 };
+function chat(){ return S.chats[S.myTree] || (S.chats[S.myTree] = []); }
 var timers = [], br = false, ui = {}, ringSvgCache = null;
 function t(fn, ms){ timers.push(setTimeout(fn, ms)); }
 
@@ -100,72 +105,121 @@ var CIRCLE     = 'width:44px;height:44px;flex-shrink:0;border-radius:50%;color:'
 var PILL_SMALL = 'padding:7px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:'+C.text2+';font-size:12px;cursor:pointer;white-space:nowrap';
 var TAG_ON_IMG = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(15,36,24,.38);color:'+C.text+';font-size:11.5px;white-space:nowrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
 var TAG        = 'display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;color:'+C.text+';font-size:12px;white-space:nowrap;' + GLASS;
-var EYEBROW    = 'font-size:11px;letter-spacing:2.5px;color:'+C.lime;
+var EYEBROW    = 'font-size:12px;color:'+C.lime;
 var SCROLL     = 'flex:1;overflow-y:auto;padding:58px 18px 108px;min-height:0';
 
 /* ── 資料 ───────────────────────────────────────────────── */
-var LABELS = ['說說話','樹的日常','找樹洞','樹的邀請','分享','年輪種樹','即時風景'];
+/* 畫面編號：0 是第一次打開（onboarding），1–7 是主要畫面 */
+var LABELS = ['第一次打開','說說話','樹的日常','找樹洞','樹的邀請','分享','年輪種樹','即時風景'];
 
-/* 三棵都是阿里山巨木群棧道上的真實紅檜，數字取自林業署步道頁、阿里山國家風景區官網與維基百科表格 */
-var TREES = {
-  t1: {name:'1 號巨木', num:'1 號',  meta:'巨木群棧道 1 號 · 紅檜 · 約 1,500 歲 · 海拔 2,211m', forest:'巨木群棧道第一段', line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」'},
-  t2: {name:'2 號巨木', num:'2 號',  meta:'巨木群棧道 2 號 · 紅檜 · 1,515 歲 · 海拔 2,204m',   forest:'巨木群棧道第一段', line:'「我是這條棧道上最老的。一千五百年，什麼都見過了，你說的不會嚇到我。」'},
-  t28:{name:'阿檜',     num:'28 號', meta:'巨木群棧道 28 號 · 紅檜 · 1,095 歲 · 海拔 2,173m',  forest:'巨木群棧道第二段', line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」'}
+/* 森林：入口用個性，地理放在細節。三座都是真實的檜木林，座標給 Open-Meteo 抓當地天氣用。
+   阿里山沿用原本三棵；拉拉山、大雪山的樹齡用林業署 2023 年重新檢測的數字（中央社 2023-04-12 報導） */
+var FORESTS = {
+  alishan:{ id:'alishan', persona:'常常起霧的老林', short:'阿里山', name:'巨木群棧道', place:'嘉義',
+            range:'海拔約 2,000–2,200m', lat:23.51, lon:120.80, elev:2173,
+            about:'棧道上有 36 棵紅檜巨木，每一棵都超過千歲。下午常常起霧。' },
+  lala:   { id:'lala', persona:'長在一起的巨木林', short:'拉拉山', name:'巨木區', place:'桃園',
+            range:'海拔 1,400–1,900m', lat:24.71, lon:121.43, elev:1650,
+            about:'園區裡有二十多棵編號巨木，很多是好幾棵紅檜長在一起的。一年到頭雲霧都多。' },
+  dxs:    { id:'dxs', persona:'鳥很多的高山林', short:'大雪山', name:'國家森林遊樂區', place:'台中',
+            range:'海拔 2,000–2,600m', lat:24.27, lon:121.02, elev:2200,
+            about:'紅檜、黃檜和鐵杉長在一起，是台灣有名的賞鳥地。藍腹鷴常常慢慢走過步道。' }
 };
-var DEFAULT_TREE = 't28';
+var FOREST_ORDER = ['alishan', 'lala', 'dxs'];
 
-/* 讓心情帶路：三題各投一棵樹，第一、二題各 1 分，第三題 1.5 分。
-   第三題通常決定結果，但前兩題若指向同一棵，心情會蓋過第三題；平手以第三題為準。
+/* 樹：都是真的、有編號的紅檜。line 是它介紹自己的話，happy 是「說個開心的事」時它說的。
+   有查到的海拔才寫 elev，沒有就顯示整座森林的海拔範圍 */
+var TREES = {
+  t1:  {id:'t1',  forest:'alishan', name:'1 號巨木', num:'1 號',  species:'紅檜', age:'約 1,500 歲', elev:'海拔 2,211m',
+        fact:'站在棧道入口，每個人都會先經過它',
+        line:'「我站在入口，每個人都會先經過我。不用想好要說什麼，先來就好。」',
+        happy:'早上的霧散得剛剛好，陽光從樹縫照下來。一千多年了，我還是喜歡這個時候。'},
+  t2:  {id:'t2',  forest:'alishan', name:'2 號巨木', num:'2 號',  species:'紅檜', age:'1,515 歲', elev:'海拔 2,204m',
+        fact:'林業署重新量過，是量過的巨木裡最老的',
+        line:'「林業署重新量過，我一千五百一十五歲，是他們量過最老的。你說的不會嚇到我。」',
+        happy:'昨天風很大，可是我一根枝子都沒掉。活到一千五百歲，這種小事還是會讓我得意一下。'},
+  t28: {id:'t28', forest:'alishan', name:'阿檜',     num:'28 號', species:'紅檜', age:'1,095 歲', elev:'海拔 2,173m',
+        fact:'好幾棵紅檜長在一起，胸圍 13.1 公尺',
+        line:'「我不是一棵，是好幾棵長在一起的。你來了，就再多一個。」',
+        happy:'好。上禮拜有一窩山雀，搬進我被雷劈出來的那個洞裡，每天早上吵得不得了。一千年了，我還是會為這種小事高興。'},
+  l24: {id:'l24', forest:'lala', name:'24 號巨木', num:'24 號', species:'紅檜', age:'1,495 歲',
+        fact:'四棵紅檜長在一起，拉拉山最老的一棵',
+        line:'「我是四棵紅檜長在一起的。一個人來也沒關係，在我這裡不會只有你一個。」',
+        happy:'我們四棵今年又一起冒了新芽。長在一起這麼久，還是會為這種事高興。'},
+  l17: {id:'l17', forest:'lala', name:'17 號巨木', num:'17 號', species:'紅檜', age:'1,478 歲',
+        fact:'沒有跟別的樹合在一起，自己一棵長到現在',
+        line:'「我是自己一棵長到現在的，一千四百多年。你想安靜待著，我很懂。」',
+        happy:'今天林子裡很安靜，只有我跟幾隻鳥。這種日子我最喜歡。'},
+  l18: {id:'l18', forest:'lala', name:'18 號巨木', num:'18 號', species:'紅檜', age:'1,214 歲',
+        fact:'胸圍 20.8 公尺，要十三個人才抱得住',
+        line:'「我的腰圍有二十公尺，要十三個人才抱得住。你說多少，我都裝得下。」',
+        happy:'今天有一群小朋友手牽手想抱住我，差一點點就抱滿了。'},
+  l5:  {id:'l5',  forest:'lala', name:'5 號巨木', num:'5 號',  species:'紅檜', age:'848 歲',
+        fact:'以前被說有 2,800 歲，重新量過才知道是 848 歲',
+        line:'「以前大家說我兩千八百歲，重新量過才知道是八百多歲。被看錯也沒關係，我還是我。」',
+        happy:'有人在我前面說：「原來你才八百多歲，還年輕嘛。」我聽了很開心。'},
+  d1:  {id:'d1',  forest:'dxs', name:'雪山神木', num:'雪山', species:'紅檜', age:'1,095 歲',
+        fact:'九棵紅檜長在一起，在大雪山林道的盡頭',
+        line:'「我是九棵紅檜長在一起的。林道走到底才看得到我，你在這裡說，我一樣聽得到。」',
+        happy:'今天山上很清楚，看得到好遠。九棵一起站在這裡，風景是大家的。'},
+  d2:  {id:'d2',  forest:'dxs', name:'小神木', num:'小神木', species:'紅檜', age:'1,160 歲',
+        fact:'名字叫小神木，其實比雪山神木還老',
+        line:'「大家叫我小神木，其實我比雪山神木還老。名字小，不代表裝不下。」',
+        happy:'今天有一隻藍腹鷴從我腳邊走過去，慢慢的，一點都不怕人。'}
+};
+/* 分數一樣時的順序：「請推薦我」又沒有方向時，第一張卡是阿檜 */
+var TREE_ORDER = ['t28', 'l24', 'd2', 't2', 'l18', 'd1', 't1', 'l17', 'l5'];
+function treesOf(fid){ return TREE_ORDER.filter(function(id){ return TREES[id].forest === fid; }).map(function(id){ return TREES[id]; }); }
+function myTree(){ return TREES[S.myTree] || TREES.t28; }
+function myForest(){ return FORESTS[myTree().forest]; }
+function bare(line){ return line.replace(/^「|」$/g, ''); }
+
+/* 讓心情帶路：每個選項投給幾棵樹，第一、二題各 1 分，第三題 1.5 分。
+   最後挑三個樹洞：分數最高的先上，接著盡量從不同的森林挑（有得分的才算），讓人看到不只一座林。
    選項一律以回答的人為主語，樹直接點名，避免「你」同時指人又指樹。 */
 var QUIZ = [
   {title:'最近的心情，比較像哪一種天氣？', opts:[
-    {label:'起霧的清晨',   tree:'t1'},
-    {label:'下不停的雨',   tree:'t2'},
-    {label:'悶悶的、沒有風', tree:'t1'},
-    {label:'晴空萬里',     tree:'t28'}]},
+    {label:'起霧的清晨',     trees:['t1', 'l17', 'd1']},
+    {label:'下不停的雨',     trees:['t2', 'l18', 'l24']},
+    {label:'悶悶的、沒有風', trees:['t1', 'l5', 'd2']},
+    {label:'晴空萬里',       trees:['t28', 'd2', 'l24']}]},
   {title:'你需要什麼陪伴？', opts:[
-    {label:'聽樹說它的故事', tree:'t2'},
-    {label:'聽山上的聲音',   tree:null, branch:'sound'},   /* 只負責把第三題轉成聲音問題，自己不投票 */
-    {label:'我需要樹洞',     tree:'t28'}]},
+    {label:'聽樹說它的故事', trees:['t2', 'l5', 'd2']},
+    {label:'聽山上的聲音',   trees:[], branch:'sound'},   /* 只負責把第三題轉成聲音問題，自己不投票 */
+    {label:'我需要樹洞',     trees:['t28', 'l18', 'l17']}]},
   {title:'現在的你，想找什麼樣的樹？', opts:[
-    {label:'沒有特別的想法，請推薦我', tree:null},   /* 不投票，交給前兩題的心情決定 */
-    {label:'什麼都見過的老樹',       tree:'t2'},
-    {label:'站得最高、看得最遠的',   tree:'t28'}]}
+    {label:'沒有特別的想法，請推薦我', trees:[]},   /* 不投票，交給前兩題的心情決定 */
+    {label:'什麼都見過的老樹',       trees:['t2', 'l24', 'l17']},
+    {label:'好幾棵長在一起的',       trees:['t28', 'l24', 'l18', 'd1']}]}
 ];
-/* 第二題選「聽山上的聲音」時的第三題：問想聽樹旁邊的哪種聲音。對應沿用三棵樹既有的故事：
-   入口的 1 號清晨先遇到霧、最老的 2 號經過的風最多、阿檜的洞裡住著一窩山雀 */
+/* 第二題選「聽山上的聲音」時的第三題：問想聽樹旁邊的哪種聲音。
+   霧：阿里山入口的 1 號、雲霧多的拉拉山；風：最老的 2 號、林道盡頭的雪山神木；鳥：阿檜的山雀、大雪山的鳥 */
 var QUIZ3_SOUND = {title:'你想聽樹旁邊的哪種聲音？', opts:[
-    {label:'沒有特別的想法，請推薦我', tree:null},
-    {label:'霧滴落在葉子上的聲音',   tree:'t1',  sound:'fog'},
-    {label:'風吹過樹冠的聲音',       tree:'t2',  sound:'wind'},
-    {label:'山雀在枝頭上叫',         tree:'t28', sound:'birds'}]};
+    {label:'沒有特別的想法，請推薦我', trees:[]},
+    {label:'霧滴落在葉子上的聲音',   trees:['t1', 'l17'],  sound:'fog'},
+    {label:'風吹過樹冠的聲音',       trees:['t2', 'd1'],   sound:'wind'},
+    {label:'山雀在枝頭上叫',         trees:['t28', 'd2'],  sound:'birds'}]};
 function quizAt(step){
   if(step === 2 && S.quizPick[1] && S.quizPick[1].branch === 'sound') return QUIZ3_SOUND;
   return QUIZ[step];
 }
 var QUIZ_WEIGHT = [1, 1, 1.5];
-function quizResult(){
-  var score = {t1:0, t2:0, t28:0};
-  S.quizPick.forEach(function(o, i){ if(o && o.tree) score[o.tree] += QUIZ_WEIGHT[i]; });
-  var ids = Object.keys(score);
-  var max = Math.max.apply(null, ids.map(function(id){ return score[id]; }));
-  var leaders = ids.filter(function(id){ return score[id] === max; });
-  if(leaders.length === 1) return TREES[leaders[0]];
-  /* 平手：第三題有選就以第三題為準；選「請推薦我」（前兩題指向不同的樹）就推薦阿檜 */
-  var q3 = S.quizPick[2] ? S.quizPick[2].tree : null;
-  return TREES[(q3 && leaders.indexOf(q3) >= 0) ? q3 : DEFAULT_TREE];
+function quizTop3(){
+  var score = {};
+  TREE_ORDER.forEach(function(id){ score[id] = 0; });
+  S.quizPick.forEach(function(o, i){ ((o && o.trees) || []).forEach(function(id){ score[id] += QUIZ_WEIGHT[i]; }); });
+  var q3 = (S.quizPick[2] && S.quizPick[2].trees) || [];
+  var ids = TREE_ORDER.slice().sort(function(a, b){
+    return (score[b] - score[a])
+        || ((q3.indexOf(b) >= 0 ? 1 : 0) - (q3.indexOf(a) >= 0 ? 1 : 0))   /* 平手以第三題為準 */
+        || (TREE_ORDER.indexOf(a) - TREE_ORDER.indexOf(b));
+  });
+  var out = [], seen = {};
+  /* 先從不同的森林挑（只挑有得分的，不硬塞不相干的樹），不夠再照分數補 */
+  ids.forEach(function(id){ if(out.length < 3 && score[id] > 0 && !seen[TREES[id].forest]){ out.push(id); seen[TREES[id].forest] = 1; } });
+  ids.forEach(function(id){ if(out.length < 3 && out.indexOf(id) < 0) out.push(id); });
+  return out.map(function(id){ return TREES[id]; });
 }
-
-var FORESTS = [
-  {label:'有活力的闊葉林', tree:{name:'阿樟', meta:'溪頭 樟樹 · 320 歲 · 闊葉林緣', forest:'有活力的闊葉林', line:'「我這裡整天都有鳥在吵，熱鬧得很。你來，分你一半。」'}},
-  {label:'沉得住氣的冷杉林', tree:{name:'老岑', meta:'塔塔加 台灣冷杉 · 400 歲 · 海拔 3,100m', forest:'沉得住氣的冷杉林', line:'「山頂的雪我看了四百年。多大的事，放到這裡都會變小。」'}},
-  {label:'安靜守夜的鐵杉林', tree:{name:'阿鐵', meta:'鹿林山 台灣鐵杉 · 650 歲 · 稜線上', forest:'安靜守夜的鐵杉林', line:'「睡不著的話來找我。我夜裡本來就醒著，習慣了。」'}},
-  {label:'說話直接的雲杉林', tree:{name:'直雲', meta:'沙里仙溪 台灣雲杉 · 280 歲 · 溪源', forest:'說話直接的雲杉林', line:'「我不會繞圈子。你問，我就說；你不問，我就陪你站著。」'}},
-  {label:'記性很好的櫟林', tree:{name:'憶青', meta:'鳳凰山 森氏櫟 · 210 歲 · 霧林帶', forest:'記性很好的櫟林', line:'「你上次說過的話，我都收在葉子背面，一片一片，沒弄丟過。」'}},
-  {label:'會說故事的楠櫧林', tree:{name:'述楠', meta:'內茅埔 香楠 · 180 歲 · 緩坡', forest:'會說故事的楠櫧林', line:'「我肚子裡有一百年的故事。你換我一個，我就講一個給你聽。」'}},
-  {label:'熱熱鬧鬧的楠榕林', tree:{name:'阿榕', meta:'和社 白榕 · 150 歲 · 溪谷口', forest:'熱熱鬧鬧的楠榕林', line:'「我的枝子上住了半座山的鄰居。你也算一個，隨時來。」'}},
-  {label:'看得很遠的高山植群', tree:{name:'遠望', meta:'玉山前峰 玉山圓柏 · 900 歲 · 森林界線', forest:'看得很遠的高山植群', line:'「我住在森林結束的地方。從這裡看下去，什麼都過得去。」'}}
-];
 
 
 /* 即時風景：四個時段都留在綠色調裡，天空頂端夠暗，讓淺色字與狀態列看得清楚 */
@@ -187,18 +241,27 @@ var HOUR_FORCE = QS.get('hour'), WX_FORCE = QS.get('wx');
 function curHour(){ return (HOUR_FORCE !== null && HOUR_FORCE !== '' && !isNaN(+HOUR_FORCE)) ? +HOUR_FORCE : new Date().getHours(); }
 function curTod(){ var h=curHour(); return h>=5&&h<10?'晨':h>=10&&h<16?'午':h>=16&&h<19?'暮':'夜'; }
 
-/* ── 阿檜當地的天氣：Open-Meteo（免金鑰，可直接從網頁呼叫）────────
-   免費版限非商業用途、需標示來源（CC BY 4.0）。正式上線改用氣象署阿里山測站。
-   座標取阿里山巨木群棧道，海拔指定 2,173m（28 號巨木），讓氣溫依海拔修正 */
-var WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=23.51&longitude=120.80&elevation=2173'
+/* ── 每座森林當地的天氣：Open-Meteo（免金鑰，可直接從網頁呼叫）────────
+   免費版限非商業用途、需標示來源（CC BY 4.0）。正式上線改用氣象署測站。
+   一次請求帶三組座標，回傳的陣列順序跟 FOREST_ORDER 一樣；海拔指定給它，讓氣溫依海拔修正 */
+var WX_URL = 'https://api.open-meteo.com/v1/forecast'
+           + '?latitude='  + FOREST_ORDER.map(function(f){ return FORESTS[f].lat;  }).join(',')
+           + '&longitude=' + FOREST_ORDER.map(function(f){ return FORESTS[f].lon;  }).join(',')
+           + '&elevation=' + FOREST_ORDER.map(function(f){ return FORESTS[f].elev; }).join(',')
            + '&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m&timezone=Asia%2FTaipei';
-var LIVE_WX = null;
+var LIVE_WX = {};
 function fetchWeather(){
   if(!window.fetch) return;
   fetch(WX_URL).then(function(r){ return r.ok ? r.json() : Promise.reject(r.status); }).then(function(j){
-    var c = j && j.current; if(!c || c.weather_code == null) return;
-    LIVE_WX = { code:c.weather_code, temp:Math.round(c.temperature_2m), cloud:c.cloud_cover, precip:c.precipitation, wind:c.wind_speed_10m, time:c.time };
-    if(S.screen === 7) renderScreen();
+    var list = Array.isArray(j) ? j : [j];
+    list.forEach(function(item, i){
+      var c = item && item.current, fid = FOREST_ORDER[i];
+      if(!fid || !c || c.weather_code == null) return;
+      LIVE_WX[fid] = { code:c.weather_code, temp:Math.round(c.temperature_2m), cloud:c.cloud_cover, precip:c.precipitation, wind:c.wind_speed_10m, time:c.time };
+    });
+    /* 有用到天氣的畫面重畫；說說話頁只更新抬頭，免得打斷正在打的字 */
+    if(S.screen === 0 || S.screen === 3 || S.screen === 7) renderScreen();
+    else if(S.screen === 1 && ui.headWx) ui.headWx.textContent = headWx();
   }).catch(function(){ /* 連不上就沿用時段預設，不影響其他功能 */ });
 }
 /* WMO 天氣代碼 → 畫面要用的天氣種類 */
@@ -218,13 +281,30 @@ function wmo(code){
 var WX_FORCE_CODE = {clear:0, partly:2, cloudy:3, fog:45, rain:63, storm:95, snow:73};
 var TOD_TEMP = {'晨':14, '午':19, '暮':16, '夜':9};
 var TOD_KIND = {'晨':'fog', '午':'partly', '暮':'clear', '夜':'clear'};   /* 沒有資料時的時段預設 */
-function nowWeather(tod){
+/* fid：哪座森林，沒給就是「我的樹」所在的森林 */
+function nowWeather(tod, fid){
+  fid = fid || myTree().forest;
   if(WX_FORCE_CODE[WX_FORCE] != null){ var f = wmo(WX_FORCE_CODE[WX_FORCE]); f.temp = f.kind === 'snow' ? -2 : TOD_TEMP[tod]; f.src = 'force'; return f; }
-  if(LIVE_WX){ var w = wmo(LIVE_WX.code); w.temp = LIVE_WX.temp; w.src = 'live'; return w; }
+  var live = LIVE_WX[fid];
+  if(live){ var w = wmo(live.code); w.temp = live.temp; w.src = 'live'; return w; }
   return { kind:TOD_KIND[tod], label:null, temp:null, src:'default' };
 }
+/* 短短一句天氣：「14°C · 起霧」；還沒抓到資料就回空字串 */
+function wxShort(fid){
+  var w = nowWeather(curTod(), fid);
+  return w.src === 'default' ? '' : (w.temp + '°C · ' + w.label);
+}
 function wx(){ return P.weather || '起霧'; }
-function wxLine(){ return WX_LINE[wx()] || ''; }
+/* 說說話抬頭的天氣：有真實天氣就用，沒有就用原本的示範句 */
+function headWx(){ var s = wxShort(); return s ? ('現在 ' + s) : WX_HEADER[wx()]; }
+/* 樹回話時順口提一句山上的天氣 */
+function wxLine(){
+  var tod = curTod(), w = nowWeather(tod);
+  if(w.src === 'default') return WX_LINE[wx()] || '';
+  return ({ fog:'山上的霧還沒散，', rain:'我這裡也在下雨，', storm:'山上在打雷，', snow:'山上下雪了，',
+            cloudy:'山上雲很厚，', partly:'山上有幾朵雲，',
+            clear: tod === '夜' ? '今晚山上看得到星星，' : '今天山上很亮，' })[w.kind] || '';
+}
 function now(){ var d=new Date(); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 function rings(){ return Math.max(0, P.startRings + S.gained - (S.planted?500:0)); }
 
@@ -606,6 +686,14 @@ function msgNode(m){
       bub.appendChild(sc);
     }
     wrap.appendChild(bub);
+    /* 樹問了一個問題（例如要不要收晨報）：答案直接放在泡泡下面，答過就收起來 */
+    if(m.actions && !m.answered){
+      var acts = el('div','display:flex;gap:8px;margin-top:8px');
+      m.actions.forEach(function(a){
+        acts.appendChild(button(PILL_SMALL + ';padding:9px 16px;font-size:13px;color:'+C.text, a.label, function(){ answerAction(m, a); }, 'background:rgba(255,255,255,.14)'));
+      });
+      wrap.appendChild(acts);
+    }
     wrap.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:6px;padding-left:6px', m.time));
   } else {
     wrap = el('div','max-width:78%;align-self:flex-end');
@@ -617,7 +705,7 @@ function msgNode(m){
 }
 function scrollChat(){ if(ui.chat) ui.chat.scrollTop = ui.chat.scrollHeight; }
 function pushMsg(m){
-  S.messages.push(m);
+  chat().push(m);
   if(S.screen===1 && ui.chat){
     if(ui.thinkNode) ui.chat.insertBefore(msgNode(m), ui.thinkNode);
     else ui.chat.appendChild(msgNode(m));
@@ -629,7 +717,7 @@ function setThinking(on){
   if(S.screen!==1 || !ui.chat) return;
   if(on && !ui.thinkNode){
     var n = el('div','align-self:flex-start;display:flex;align-items:center;gap:9px;border-radius:6px 22px 22px 22px;padding:11px 16px;' + GLASS);
-    n.appendChild(el('span','font-size:13px;color:'+C.text2,'阿檜在想'));
+    n.appendChild(el('span','font-size:13px;color:'+C.text2, myTree().name + '在想'));
     var dots = el('span','display:flex;gap:4px');
     [0,.3,.6].forEach(function(d){ dots.appendChild(el('span','width:5px;height:5px;border-radius:50%;background:'+C.lime+';animation:th-dots 1.8s '+d+'s infinite')); });
     n.appendChild(dots);
@@ -639,15 +727,39 @@ function setThinking(on){
   }
 }
 function chipReply(v){
-  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的時候不用說太多，坐一下就好。我在這裡站了一千年——急不來的事，我最懂。';
-  if(v.indexOf('開心')>= 0) return '好。上禮拜有一窩山雀，搬進我被雷劈出來的那個洞裡，每天早上吵得不得了。一千年了，我還是會為這種小事高興。';
+  if(v === '說說今天')     return '好，今天過得怎麼樣？想到什麼就說什麼。';
+  if(v === '只是想來坐坐') return '好啊，坐吧。'+wxLine()+'不說話也沒關係。';
+  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的時候不用說太多，坐一下就好。我在這裡站很久了，急不來的事，我最懂。';
+  if(v.indexOf('開心')>= 0) return myTree().happy;
   if(v.indexOf('樹洞')>= 0) return '好，我收著了。樹洞很深，放得下。不用回頭看。';
   return null;
+}
+/* 樹先開口：自我介紹＋它那座山現在的天氣 */
+function greeting(tree){
+  var f = FORESTS[tree.forest], s = wxShort(tree.forest);
+  var wxs = s ? (f.short + '現在 ' + s.replace(' · ', '，') + '。') : '';
+  return '你好，我是' + tree.name + '。' + wxs + bare(tree.line);
+}
+/* 第一次跟這棵樹說話：開場白＋三個中性的起頭 */
+function startChat(tree){
+  S.myTree = tree.id;
+  S.chats[tree.id] = [{isTree:true, text:greeting(tree), time:now()}];
+  S.chips = ['說說今天', '只是想來坐坐', '說個開心的事'];
+  S.firstChat = true;
+}
+function answerAction(m, a){
+  m.answered = true;
+  if(a.id === 'morning-yes') S.morning = true;
+  if(a.id === 'morning-no')  S.morning = false;
+  renderScreen();
+  pushMsg({isMe:true, text:a.label, time:now()});
+  t(function(){ pushMsg({isTree:true, text:a.reply, time:now()}); }, 900);
 }
 function send(text){
   var v = (text != null ? text : (ui.input ? ui.input.value : '')).trim();
   if(!v || S.thinking) return;
   if(text == null && ui.input) ui.input.value = '';
+  if(S.chips){ S.chips = null; if(ui.chips){ ui.chips.remove(); ui.chips = null; } }
 
   pushMsg({isMe:true, text:v, time:now()});
   pushMsg({isNote:true, text:'收到了，讓我想一想。'});
@@ -662,6 +774,15 @@ function send(text){
     var r = chipReply(v) || pool[S.replyCount % pool.length];
     S.replyCount++; S.gained += 1;
     pushMsg({isTree:true, text:r, time:now()});
+    /* 第一次對話：回完第一句之後，順口問要不要收晨報 */
+    if(S.firstChat){
+      S.firstChat = false;
+      t(function(){
+        pushMsg({isTree:true, time:now(), text:'對了，明天早上要不要我跟日出一起，寄一封晨報給你？說說山上那時候的樣子。',
+          actions:[{id:'morning-yes', label:'好啊',   reply:'好，明天日出的時候見。'},
+                   {id:'morning-no',  label:'先不用', reply:'好。想看的時候，點上面的「今天的晨報」就有。'}]});
+      }, 1600);
+    }
   }, P.replyDelaySec * 1000);
 }
 
@@ -770,9 +891,11 @@ function screen1(){
   av.appendChild(el('span','position:absolute;right:1px;bottom:2px;width:12px;height:12px;border-radius:50%;background:'+C.lime+';border:2px solid #17351F;animation:th-pulse 4s ease-in-out infinite'));
   head.appendChild(av);
   var hm = el('div','flex:1;min-width:0');
-  hm.appendChild(el('div','font-size:22px;font-weight:500;line-height:1.25;color:'+C.text,'阿檜'));
-  hm.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis','巨木群棧道 28 號 · 1,095 歲'));
-  hm.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:1px', WX_HEADER[wx()]));
+  var tr = myTree(), fo = myForest();
+  hm.appendChild(el('div','font-size:22px;font-weight:500;line-height:1.25;color:'+C.text, tr.name));
+  hm.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis', fo.short + ' ' + fo.name + ' · ' + tr.age));
+  ui.headWx = el('div','font-size:11.5px;color:'+C.text3+';margin-top:1px', headWx());
+  hm.appendChild(ui.headWx);
   head.appendChild(hm);
   var meBtn = button(CIRCLE + ';font-size:13px;padding:0', '我', go(5), 'background:rgba(255,255,255,.14)');
   meBtn.setAttribute('aria-label','我');
@@ -785,14 +908,22 @@ function screen1(){
   quick.appendChild(button(qs, '樹的邀請',   go(4), 'background:rgba(255,255,255,.14)'));
   root.appendChild(quick);
 
-  var chat = el('div','flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0');
-  S.messages.forEach(function(m){ chat.appendChild(msgNode(m)); });
-  root.appendChild(chat);
-  ui.chat = chat; ui.thinkNode = null;
+  var chatBox = el('div','flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px;min-height:0');
+  chat().forEach(function(m){ chatBox.appendChild(msgNode(m)); });
+  root.appendChild(chatBox);
+  ui.chat = chatBox; ui.thinkNode = null;
   if(S.thinking){ S.thinking = false; setThinking(true); }
 
   /* 輸入列：像參考圖的搜尋框，右邊白色圓鈕 */
   var bar = el('div','padding:0 16px 96px');
+  /* 第一次對話的三個起頭：點了就當成自己說的話送出 */
+  if(S.chips){
+    var chipRow = el('div','display:flex;gap:8px;overflow-x:auto;padding:0 2px 10px');
+    S.chips.forEach(function(c){
+      chipRow.appendChild(button(PILL_SMALL + ';padding:9px 14px;font-size:13px;color:'+C.text, c, function(){ send(c); }, 'background:rgba(255,255,255,.14)'));
+    });
+    bar.appendChild(chipRow); ui.chips = chipRow;
+  }
   var rowStyle = 'display:flex;gap:8px;align-items:center;border-radius:999px;padding:6px 6px 6px 18px;' + GLASS;
   var row = el('div', rowStyle);
   var input = document.createElement('input');
@@ -817,7 +948,7 @@ function screen2(){
   root.appendChild(subHeader('樹的日常', '8月2日 · 06:12 送達'));
 
   var card = el('div', CARD + ';margin-top:18px;padding:10px 10px 12px');
-  card.appendChild(miniScene(180, [WX_HEADER[wx()], '日出 05:31']));
+  card.appendChild(miniScene(180, [WX_HEADER[wx()], '日出 05:31']));   /* 這封晨報有日期，天氣跟著內文的霧，不換成現在的天氣 */
   var body = el('div','padding:18px 10px 4px;font-size:15.5px;line-height:1.85;color:'+C.text);
   body.innerHTML = '早安。霧在天亮前就上來了，山雀比平常晚了十分鐘才叫。我數了一下，昨晚一共落了三片葉子。<br><br>你今天好嗎？如果有時間，我們一起來練習五分鐘的呼吸。';
   card.appendChild(body);
@@ -830,101 +961,338 @@ function screen2(){
   return root;
 }
 
+/* ── 找樹洞的共用元件：問題卡、三張揭曉卡、森林清單、單一森林 ──
+   「找樹洞」分頁跟第一次打開都用這幾塊，只是選定之後去的地方不同 */
+function treeAvatar(size){
+  var a = el('div','position:relative;width:'+size+'px;height:'+size+'px;flex-shrink:0;border-radius:50%;overflow:hidden;background:radial-gradient(circle at 50% 30%,#4E8A62,#1D4330);border:1px solid rgba(255,255,255,.22)');
+  a.appendChild(cypress('left:50%;top:10%;height:118%;transform:translateX(-50%)'));
+  return a;
+}
+function geoLine(f){ return f.place + ' · ' + f.short + f.name; }
+function resetFind(){
+  S.matches = null; S.matchedVia = null; S.cardIdx = 0;
+  S.quizStep = 0; S.quizPick = []; S.forestView = null; S.browse = false;
+}
+
+/* 問題卡：答完第三題就算出三個樹洞，onDone 決定接下來去哪 */
+function quizCard(onDone){
+  var q = quizAt(S.quizStep) || QUIZ[0];
+  var card = el('div', CARD + ';padding:22px 18px 18px');
+  var top = el('div','display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:18px');
+  var left = el('div');
+  left.appendChild(el('div', EYEBROW + ';margin-bottom:10px', '讓心情帶路'));
+  var dots = el('div','display:flex;gap:6px');
+  [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:26px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?C.lime:'rgba(255,255,255,.18)'))); });
+  left.appendChild(dots);
+  top.appendChild(left);
+  if(S.quizStep > 0){
+    top.appendChild(button(PILL_SMALL, '‹ 上一步', function(){ stopSound(); S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); }, 'background:rgba(255,255,255,.12)'));
+  }
+  card.appendChild(top);
+  card.appendChild(el('div','font-size:19px;font-weight:400;line-height:1.5;color:'+C.text, q.title));
+  var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
+  q.opts.forEach(function(o){
+    var st = 'display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 16px 14px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:'+C.text+';font-size:14.5px;cursor:pointer;text-align:left';
+    var b = el('button', st);
+    b.appendChild(el('span', null, o.label));
+    var arrow = el('span','color:'+C.text3+';font-size:14px;flex-shrink:0','↗');
+    arrow.setAttribute('aria-hidden','true');
+    b.appendChild(arrow);
+    b.onclick = function(){
+      S.quizPick[S.quizStep] = o;
+      if(S.quizStep < 2){ S.quizStep++; }
+      else {
+        S.matches = quizTop3(); S.matchedVia = 'quiz'; S.cardIdx = 0;
+        /* 聲音留到樹洞揭曉時才播：選了聲音的，結果一出現就開始 */
+        if(o.sound) playSound(o.sound); else stopSound();
+        if(onDone) onDone();
+      }
+      renderScreen();
+    };
+    hover(b,'background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.24)', st);
+    opts.appendChild(b);
+  });
+  card.appendChild(opts);
+  return card;
+}
+
+/* 森林清單：入口是個性，下面一行才是地理和現在的天氣 */
+function forestList(){
+  var wrap = el('div','display:flex;flex-direction:column;gap:10px');
+  FOREST_ORDER.forEach(function(fid){
+    var f = FORESTS[fid], s = wxShort(fid);
+    var st = GLASS + ';border-radius:24px;display:block;width:100%;text-align:left;padding:16px 18px;cursor:pointer;color:'+C.text;
+    var b = el('button', st);
+    var top = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px');
+    top.appendChild(el('div','font-size:17px;font-weight:500', f.persona));
+    var arrow = el('span','color:'+C.text3+';font-size:18px;line-height:1','›');
+    arrow.setAttribute('aria-hidden','true');
+    top.appendChild(arrow);
+    b.appendChild(top);
+    b.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:5px', geoLine(f) + (s ? ' · ' + s : '')));
+    b.appendChild(el('div','font-size:12px;color:'+C.text3+';margin-top:8px', treesOf(fid).map(function(tr){ return tr.name; }).join('、')));
+    b.onclick = function(){ stopSound(); S.forestView = fid; renderScreen(); };
+    hover(b, 'background:rgba(255,255,255,.12)', st);
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+/* 一座森林：介紹、現在的天氣、林子裡的樹洞 */
+function forestDetail(){
+  var fid = S.forestView, f = FORESTS[fid], s = wxShort(fid);
+  var root = el('div');
+  root.appendChild(subHeader(f.persona, geoLine(f), function(){ S.forestView = null; renderScreen(); }, '回到森林'));
+  var info = el('div', CARD + ';margin-top:16px;padding:16px 18px 18px');
+  var tags = el('div','display:flex;flex-wrap:wrap;gap:6px');
+  if(s) tags.appendChild(el('span', TAG, '現在 · ' + s));
+  tags.appendChild(el('span', TAG, f.range));
+  info.appendChild(tags);
+  info.appendChild(el('div','font-size:14.5px;line-height:1.8;color:rgba(242,246,240,.86);margin-top:12px', f.about));
+  root.appendChild(info);
+
+  root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:22px 2px 10px','這座林裡的樹洞'));
+  var list = el('div','display:flex;flex-direction:column;gap:8px');
+  treesOf(fid).forEach(function(tree){
+    var st = GLASS + ';border-radius:20px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 14px;cursor:pointer;color:'+C.text;
+    var b = el('button', st);
+    b.appendChild(treeAvatar(44));
+    var mid = el('div','flex:1;min-width:0');
+    mid.appendChild(el('div','font-size:15px;font-weight:500', tree.name + '　' + tree.age));
+    mid.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:3px;line-height:1.5', tree.fact));
+    b.appendChild(mid);
+    if(tree.id === S.myTree && S.screen !== 0) b.appendChild(el('span','flex-shrink:0;font-size:11px;color:'+C.lime+';white-space:nowrap','你的樹'));
+    else { var ar = el('span','flex-shrink:0;color:'+C.text3+';font-size:18px','›'); ar.setAttribute('aria-hidden','true'); b.appendChild(ar); }
+    b.onclick = function(){ S.matches = [tree]; S.matchedVia = 'forest'; S.cardIdx = 0; renderScreen(); };
+    hover(b, 'background:rgba(255,255,255,.12)', st);
+    list.appendChild(b);
+  });
+  root.appendChild(list);
+  return root;
+}
+
+/* 揭曉：三個樹洞做成可以左右滑的卡片；從森林點進來的就只有一張。
+   ctx：onBack 返回、onPick(tree) 選定、browseLabel／onBrowse 第二顆按鈕 */
+function revealView(ctx){
+  var list = S.matches, multi = list.length > 1;
+  var root = el('div');
+  var f0 = FORESTS[list[0].forest];
+  root.appendChild(subHeader(multi ? '為你找到的樹洞' : list[0].name, multi ? '左右滑動，看看這三棵' : f0.persona, ctx.onBack, multi ? '上一步' : '回到這座林'));
+
+  /* 從聲音那條路來的：揭曉時播剛剛選的聲音，可以停 */
+  var picked = S.matchedVia === 'quiz' && S.quizPick[2] && S.quizPick[2].sound ? S.quizPick[2] : null;
+  if(picked){
+    var on = SND.key === picked.sound;
+    var sst = 'display:inline-flex;align-items:center;gap:8px;padding:9px 15px;border-radius:999px;border:1px solid '+(on?'rgba(123,227,111,.55)':'rgba(255,255,255,.14)')+';background:'+(on?'rgba(123,227,111,.14)':'rgba(255,255,255,.06)')+';color:'+C.text+';font-size:12.5px;cursor:pointer;white-space:nowrap';
+    var sb = button(sst, (on ? '❚❚  ' : '▶  ') + picked.label, function(){ toggleSound(picked.sound); renderScreen(); });
+    sb.setAttribute('aria-label', (on ? '停止：' : '播放：') + picked.label);
+    var sw = el('div','display:flex;justify-content:center;margin-top:12px');
+    sw.appendChild(sb); root.appendChild(sw);
+  }
+
+  var GAP = 12;
+  var track = el('div','display:flex;gap:'+GAP+'px;overflow-x:auto;scroll-snap-type:x mandatory;margin:14px -18px 0;padding:0 18px 2px;scroll-padding:0 18px');
+  list.forEach(function(tree){
+    var f = FORESTS[tree.forest];
+    var card = el('div', CARD + ';flex:0 0 '+(multi ? '86%' : '100%')+';scroll-snap-align:start;overflow:hidden;padding-bottom:18px');
+    card.setAttribute('data-tree', tree.id);
+    var stage = glowStage(214);
+    stage.appendChild(fullTree('left:50%;bottom:44px;height:164px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.5))'));
+    stage.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:44px;height:44px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 0 24px rgba(123,227,111,.6)', tree.num));
+    card.appendChild(stage);
+    var body = el('div','padding:4px 18px 0');
+    var row1 = el('div','display:flex;align-items:baseline;justify-content:space-between;gap:10px');
+    row1.appendChild(el('div','font-size:25px;font-weight:500;color:'+C.text, tree.name));
+    row1.appendChild(el('div','font-size:17px;font-weight:400;color:'+C.text+';white-space:nowrap', tree.age));
+    body.appendChild(row1);
+    body.appendChild(el('div','font-size:12.5px;color:'+C.lime+';margin-top:6px','住在' + f.persona + (tree.id === S.myTree && S.screen !== 0 ? ' · 現在是你的樹' : '')));
+    body.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:4px;line-height:1.6', geoLine(f) + ' · ' + tree.species + ' · ' + (tree.elev || f.range)));
+    body.appendChild(el('div','font-size:15px;line-height:1.8;color:rgba(242,246,240,.86);margin-top:12px', tree.line));
+    card.appendChild(body);
+    track.appendChild(card);
+  });
+  root.appendChild(track);
+
+  var dots = null;
+  if(multi){
+    dots = el('div','display:flex;justify-content:center;gap:6px;margin-top:14px');
+    list.forEach(function(_, i){ dots.appendChild(el('div','height:6px;border-radius:3px;transition:all .25s;width:'+(i === S.cardIdx ? 18 : 6)+'px;background:'+(i === S.cardIdx ? C.lime : 'rgba(255,255,255,.25)'))); });
+    root.appendChild(dots);
+    var stepW = function(){ var c = track.firstChild; return c ? c.offsetWidth + GAP : 1; };
+    track.addEventListener('scroll', function(){
+      var i = Math.max(0, Math.min(list.length - 1, Math.round(track.scrollLeft / stepW())));
+      if(i === S.cardIdx) return;
+      S.cardIdx = i;
+      Array.prototype.forEach.call(dots.children, function(d, k){ d.style.width = (k === i ? 18 : 6) + 'px'; d.style.background = k === i ? C.lime : 'rgba(255,255,255,.25)'; });
+    });
+    /* 重畫（例如天氣更新）時回到剛剛看的那張 */
+    if(S.cardIdx) setTimeout(function(){ track.scrollLeft = S.cardIdx * stepW(); }, 0);
+  }
+
+  var btns = el('div','display:flex;flex-direction:column;gap:10px;margin-top:18px');
+  btns.appendChild(button(BTN_PRIMARY, '就是它', function(){ ctx.onPick(S.matches[S.cardIdx] || S.matches[0]); }, 'background:#E7F1E4'));
+  btns.appendChild(button(BTN_GLASS, ctx.browseLabel, ctx.onBrowse, 'background:rgba(255,255,255,.14)'));
+  root.appendChild(btns);
+  return root;
+}
+
+/* 在「找樹洞」分頁選了一棵：換成我的樹，回到說說話。換過去的樹第一次見面就從開場白開始 */
+function pickTree(tree){
+  stopSound();
+  if(tree.id !== S.myTree){
+    if(S.chats[tree.id] && S.chats[tree.id].length) S.myTree = tree.id;
+    else startChat(tree);
+    showToast('現在，' + tree.name + '是你的樹了');
+  }
+  resetFind();
+  setScreen(1);
+}
+
 function screen3(){
   var root = el('div', SCROLL);
   root.setAttribute('data-screen-label','3 找樹洞');
 
-  if(!S.matched){
-    root.appendChild(hero('森林', '按照現在的心情，為你推薦樹洞。'));
-    var q = quizAt(S.quizStep) || QUIZ[0];
-    var card = el('div', CARD + ';margin-top:22px;padding:22px 18px 18px');
-    var top = el('div','display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin-bottom:18px');
-    var left = el('div');
-    left.appendChild(el('div', EYEBROW + ';margin-bottom:10px', '讓心情帶路'));
-    var dots = el('div','display:flex;gap:6px');
-    [0,1,2].forEach(function(i){ dots.appendChild(el('div','width:26px;height:4px;border-radius:2px;background:'+(i<=S.quizStep?C.lime:'rgba(255,255,255,.18)'))); });
-    left.appendChild(dots);
-    top.appendChild(left);
-    if(S.quizStep > 0){
-      top.appendChild(button(PILL_SMALL, '‹ 上一步', function(){ stopSound(); S.quizStep--; S.quizPick.length = S.quizStep; renderScreen(); }, 'background:rgba(255,255,255,.12)'));
-    }
-    card.appendChild(top);
-    card.appendChild(el('div','font-size:19px;font-weight:400;line-height:1.5;color:'+C.text, q.title));
-    var opts = el('div','display:flex;flex-direction:column;gap:9px;margin-top:16px');
-    q.opts.forEach(function(o){
-      var st = 'display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 16px 14px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:'+C.text+';font-size:14.5px;cursor:pointer;text-align:left';
-      var b = el('button', st);
-      b.appendChild(el('span', null, o.label));
-      var arrow = el('span','color:'+C.text3+';font-size:14px;flex-shrink:0','↗');
-      arrow.setAttribute('aria-hidden','true');
-      b.appendChild(arrow);
-      b.onclick = function(){
-        S.quizPick[S.quizStep] = o;
-        if(S.quizStep < 2){ S.quizStep++; }
-        else {
-          S.matched = quizResult(); S.matchedVia = 'quiz';
-          /* 聲音留到樹洞揭曉時才播：選了聲音的，結果頁一出現就開始 */
-          if(o.sound) playSound(o.sound); else stopSound();
-        }
-        renderScreen();
-      };
-      hover(b,'background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.24)', st);
-      opts.appendChild(b);
-    });
-    card.appendChild(opts);
-    root.appendChild(card);
-
-    root.appendChild(el('div','font-size:11px;letter-spacing:2.5px;color:'+C.text3+';margin:24px 2px 12px','或者，直接走進一座林'));
-    var fw = el('div','display:flex;flex-wrap:wrap;gap:8px');
-    FORESTS.forEach(function(f){
-      var st = 'padding:9px 15px;border-radius:999px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);font-size:12.5px;color:'+C.text2+';white-space:nowrap;cursor:pointer';
-      fw.appendChild(button(st, f.label, function(){ stopSound(); S.matched = f.tree; S.matchedVia = 'forest'; renderScreen(); }, 'background:rgba(255,255,255,.13);color:'+C.text));
-    });
-    root.appendChild(fw);
+  if(S.matches){
+    var fromQuiz = S.matchedVia === 'quiz';
+    root.appendChild(revealView({
+      onBack: fromQuiz ? function(){ stopSound(); S.matches = null; S.quizPick.length = 2; renderScreen(); }
+                       : function(){ stopSound(); S.matches = null; renderScreen(); },
+      onPick: pickTree,
+      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座林的其他樹',
+      onBrowse: fromQuiz ? function(){ stopSound(); resetFind(); S.browse = true; renderScreen(); }
+                         : function(){ S.matches = null; renderScreen(); }
+    }));
+  } else if(S.forestView){
+    root.appendChild(forestDetail());
+  } else if(S.browse){
+    root.appendChild(subHeader('自己逛逛', '每座森林都有自己的個性', function(){ S.browse = false; renderScreen(); }, '回到讓心情帶路'));
+    var fl = forestList(); fl.style.marginTop = '18px';
+    root.appendChild(fl);
   } else {
-    /* 結果頁：像參考圖的「Tent Details」——樹站在綠光圓盤上，下面是資訊卡 */
-    var m = S.matched;
-    var reset = function(){ stopSound(); S.matched = null; S.quizStep = 0; S.quizPick = []; renderScreen(); };
-    if(S.matchedVia === 'quiz'){
-      root.appendChild(subHeader('為你找到的樹洞', null, function(){ stopSound(); S.matched = null; S.quizPick.length = 2; renderScreen(); }, '上一步'));
-    } else {
-      root.appendChild(subHeader('為你找到的樹洞', null, reset, '回到森林'));
-    }
+    root.appendChild(hero('森林', '按照現在的心情，為你推薦樹洞。'));
+    var qc = quizCard(); qc.style.marginTop = '22px';
+    root.appendChild(qc);
+    root.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:24px 2px 12px','或者，直接走進一座林'));
+    root.appendChild(forestList());
+  }
+  return root;
+}
 
-    var stage = glowStage(262);
-    stage.appendChild(fullTree('left:50%;bottom:48px;height:206px;transform:translateX(-50%);filter:drop-shadow(0 0 18px rgba(123,227,111,.5))'));
-    if(m.num) stage.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:46px;height:46px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 0 24px rgba(123,227,111,.6)', m.num));
+/* ── 第一次打開：抵達 → 先說清楚 → 讓心情帶路 → 三個樹洞 → 隱私承諾 → 樹先開口 ── */
+function onbGo(step){ return function(){ stopSound(); S.onb.step = step; renderScreen(); }; }
+function finishOnboarding(){
+  var tree = TREES[S.onb.pick] || TREES.t28;
+  stopSound();
+  startChat(tree);
+  resetFind();
+  S.onb = {step:'arrive'};   /* 從側欄重看時，從頭開始 */
+  setScreen(1);
+}
+function screen0(){
+  var st = S.onb.step;
+  var root = el('div', SCROLL + ';padding-bottom:40px');
+  root.setAttribute('data-screen-label','0 第一次打開');
+  root.setAttribute('data-step', st);
+
+  if(st === 'arrive'){
+    root.style.cssText += ';display:flex;flex-direction:column';
+    var head = el('div','padding-top:8px');
+    head.appendChild(el('div', EYEBROW, '現在的山上'));
+    var tags = el('div','display:flex;flex-wrap:wrap;gap:6px;margin-top:10px');
+    FOREST_ORDER.forEach(function(fid){
+      var s = wxShort(fid);
+      tags.appendChild(el('span', TAG, FORESTS[fid].short + (s ? ' · ' + s : '')));
+    });
+    head.appendChild(tags);
+    root.appendChild(head);
+    var stage = glowStage(300);
+    stage.style.margin = 'auto 0 0';
+    stage.appendChild(fullTree('left:50%;bottom:40px;height:250px;transform:translateX(-50%);filter:drop-shadow(0 0 18px rgba(123,227,111,.45))'));
     root.appendChild(stage);
+    root.appendChild(el('div','font-size:54px;font-weight:300;letter-spacing:10px;line-height:1;color:'+C.text+';text-align:center;margin-top:6px','樹洞'));
+    root.appendChild(el('div','font-size:15px;color:'+C.text2+';text-align:center;margin-top:16px','把心事說給一棵真的樹聽。'));
+    var go1 = el('div','margin-top:28px');
+    /* 這一下點擊順便打開聲音：之後揭曉樹洞時，聲音才放得出來 */
+    go1.appendChild(button(BTN_PRIMARY, '開始', function(){ var c = sndCtx(); if(c && c.resume) c.resume(); S.onb.step = 'about'; renderScreen(); }, 'background:#E7F1E4'));
+    root.appendChild(go1);
+    return root;
+  }
 
-    var parts = m.meta.split(' · ');
-    var age = parts.filter(function(p){ return p.indexOf('歲') >= 0; })[0] || '';
-    var tags = el('div','display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin-top:6px');
-    parts.forEach(function(p){ if(p !== age) tags.appendChild(el('span', TAG, p)); });
-    root.appendChild(tags);
+  if(st === 'about'){
+    root.style.cssText += ';display:flex;flex-direction:column';
+    var back = el('div','padding:6px 0 4px');
+    var bb = button(CIRCLE, '‹', onbGo('arrive'), 'background:rgba(255,255,255,.14)');
+    bb.setAttribute('aria-label','上一步');
+    back.appendChild(bb); root.appendChild(back);
+    root.appendChild(el('div', EYEBROW + ';margin-top:34px', '先說清楚'));
+    root.appendChild(el('div','font-size:24px;font-weight:300;line-height:1.7;letter-spacing:.5px;color:'+C.text+';margin-top:14px',
+      '這裡的每個樹洞，都代表一棵真的樹。它們長在台灣的山裡，有編號、有年紀，會與你分享山上的天氣和聲音。'));
+    /* 舉三棵真的樹當例子：一座森林一棵 */
+    var ex = el('div','display:flex;flex-direction:column;gap:8px;margin-top:28px');
+    ['t2', 'l18', 'd2'].forEach(function(id){
+      var tr = TREES[id], f = FORESTS[tr.forest];
+      var row = el('div', GLASS + ';border-radius:18px;display:flex;align-items:center;gap:12px;padding:10px 14px');
+      row.appendChild(treeAvatar(36));
+      var tx = el('div','flex:1;min-width:0');
+      tx.appendChild(el('div','font-size:14px;color:'+C.text, f.short + ' ' + tr.name));
+      tx.appendChild(el('div','font-size:11.5px;color:'+C.text3+';margin-top:2px', tr.species + ' · ' + tr.age));
+      row.appendChild(tx);
+      ex.appendChild(row);
+    });
+    root.appendChild(ex);
+    var bw = el('div','display:flex;flex-direction:column;gap:10px;margin-top:auto;padding-top:28px');
+    bw.appendChild(button(BTN_PRIMARY, '好，幫我找一棵', function(){ resetFind(); S.onb.step = 'quiz'; renderScreen(); }, 'background:#E7F1E4'));
+    bw.appendChild(button(BTN_GLASS, '我想自己逛逛森林', function(){ resetFind(); S.onb.step = 'browse'; renderScreen(); }, 'background:rgba(255,255,255,.14)'));
+    root.appendChild(bw);
+    return root;
+  }
 
-    var info = el('div', CARD + ';margin-top:16px;padding:20px 18px 18px');
-    var row1 = el('div','display:flex;align-items:baseline;justify-content:space-between;gap:10px');
-    row1.appendChild(el('div','font-size:27px;font-weight:500;color:'+C.text, m.name));
-    if(age) row1.appendChild(el('div','font-size:18px;font-weight:400;color:'+C.text+';white-space:nowrap', age));
-    info.appendChild(row1);
-    info.appendChild(el('div','font-size:12.5px;color:'+C.lime+';margin-top:6px','住在'+m.forest));
+  if(st === 'privacy'){
+    var tree = TREES[S.onb.pick];
+    root.style.cssText += ';display:flex;flex-direction:column';
+    /* 回去重選：三張卡片（或剛剛那座林）都還在 */
+    var pb = el('div','padding:6px 0 4px');
+    var pbb = button(CIRCLE, '‹', onbGo(S.onb.from || 'quiz'), 'background:rgba(255,255,255,.14)');
+    pbb.setAttribute('aria-label','回去重選');
+    pb.appendChild(pbb); root.appendChild(pb);
+    var stg = glowStage(240);
+    stg.appendChild(fullTree('left:50%;bottom:44px;height:180px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.45))'));
+    stg.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:44px;height:44px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap', tree.num));
+    root.appendChild(stg);
+    root.appendChild(el('div','font-size:13px;color:'+C.text2+';text-align:center;margin-top:4px', '你選了' + FORESTS[tree.forest].short + '的' + tree.name));
+    var sheet = el('div', CARD + ';margin-top:auto;padding:24px 22px 20px');
+    sheet.appendChild(el('div', EYEBROW, '開始之前'));
+    sheet.appendChild(el('div','font-size:22px;font-weight:400;line-height:1.5;color:'+C.text+';margin-top:10px','你說的話，只有你看得到。'));
+    sheet.appendChild(el('div','font-size:14px;line-height:1.8;color:'+C.text2+';margin-top:10px','分享卡上永遠不會出現你的心事。不想留的，隨時可以刪掉。'));
+    var ok = el('div','margin-top:20px');
+    ok.appendChild(button(BTN_PRIMARY, '知道了', finishOnboarding, 'background:#E7F1E4'));
+    sheet.appendChild(ok);
+    root.appendChild(sheet);
+    return root;
+  }
 
-    /* 從聲音那條路來的：樹洞揭曉時播剛剛選的聲音，可以停 */
-    var picked = S.matchedVia === 'quiz' && S.quizPick[2] && S.quizPick[2].sound ? S.quizPick[2] : null;
-    if(picked){
-      var on = SND.key === picked.sound;
-      var sst = 'display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:9px 15px;border-radius:999px;border:1px solid '+(on?'rgba(123,227,111,.55)':'rgba(255,255,255,.14)')+';background:'+(on?'rgba(123,227,111,.14)':'rgba(255,255,255,.06)')+';color:'+C.text+';font-size:12.5px;cursor:pointer;white-space:nowrap';
-      var sb = button(sst, (on ? '❚❚  ' : '▶  ') + picked.label, function(){ toggleSound(picked.sound); renderScreen(); });
-      sb.setAttribute('aria-label', (on ? '停止：' : '播放：') + picked.label);
-      info.appendChild(sb);
-    }
-    info.appendChild(el('div','font-size:15px;line-height:1.8;color:rgba(242,246,240,.86);margin-top:14px', m.line));
-
-    var btns = el('div','display:flex;gap:10px;margin-top:18px');
-    btns.appendChild(button(BTN_GLASS + ';flex:1', '重新配對', reset, 'background:rgba(255,255,255,.14)'));
-    btns.appendChild(button(BTN_PRIMARY + ';flex:1.4', '跟它說第一句話', go(1), 'background:#E7F1E4'));
-    info.appendChild(btns);
-    root.appendChild(info);
+  /* quiz／browse：問題、揭曉、森林清單、單一森林，都用「找樹洞」的元件 */
+  var choose = function(tree){ stopSound(); S.onb.pick = tree.id; S.onb.from = st; S.onb.step = 'privacy'; renderScreen(); };
+  if(S.matches){
+    var fromQuiz = S.matchedVia === 'quiz';
+    root.appendChild(revealView({
+      onBack: fromQuiz ? function(){ stopSound(); S.matches = null; S.quizPick.length = 2; renderScreen(); }
+                       : function(){ stopSound(); S.matches = null; renderScreen(); },
+      onPick: choose,
+      browseLabel: fromQuiz ? '我想自己逛逛森林' : '看看這座林的其他樹',
+      onBrowse: fromQuiz ? function(){ stopSound(); resetFind(); S.onb.step = 'browse'; renderScreen(); }
+                         : function(){ S.matches = null; renderScreen(); }
+    }));
+  } else if(S.forestView){
+    root.appendChild(forestDetail());
+  } else if(st === 'browse'){
+    root.appendChild(subHeader('自己逛逛', '每座森林都有自己的個性', onbGo('about'), '上一步'));
+    var fl = forestList(); fl.style.marginTop = '18px';
+    root.appendChild(fl);
+  } else {
+    root.appendChild(subHeader('找一個樹洞', '回答三個問題，幫你挑三棵樹', onbGo('about'), '上一步'));
+    var qc = quizCard(); qc.style.marginTop = '18px';
+    root.appendChild(qc);
   }
   return root;
 }
@@ -935,7 +1303,7 @@ function screen4(){
   root.appendChild(subHeader('樹的邀請'));
 
   var inv = el('div', CARD + ';margin-top:18px;padding:10px 10px 18px');
-  inv.appendChild(miniScene(150, ['阿里山 巨木群棧道', '步行 40 分', '週六多雲 18°C']));
+  inv.appendChild(miniScene(150, [myForest().short + ' ' + myForest().name, myTree().name].concat(wxShort() ? ['現在 ' + wxShort()] : [])));
   var invBody = el('div','padding:16px 10px 0');
   invBody.appendChild(el('div', EYEBROW, '出門走走'));
   invBody.appendChild(el('div','font-size:17px;line-height:1.75;color:'+C.text+';margin-top:8px','這週末，來看我嗎？不用帶什麼，山上什麼都有。'));
@@ -975,13 +1343,13 @@ function screen5(){
   card.appendChild(el('div','position:absolute;left:-30%;bottom:-14px;width:160%;height:96px;background:#11281A;border-radius:50% 50% 0 0'));
   card.appendChild(el('div','position:absolute;left:10%;bottom:-26px;width:140%;height:72px;background:#0A1A10;border-radius:50% 50% 0 0'));
   var inner = el('div','position:relative;height:100%;display:flex;flex-direction:column');
-  inner.appendChild(el('div','font-size:10px;letter-spacing:3px;color:'+C.text3,'樹洞 · 真的樹，真的聽'));
+  inner.appendChild(el('div','font-size:11px;color:'+C.text3,'樹洞 · 真的樹，真的聽'));
   var quote = el('div','font-size:36px;line-height:1.18;color:'+C.text+';margin-top:auto');
   quote.appendChild(el('span','font-weight:300','這棵樹'));
   quote.appendChild(document.createElement('br'));
   quote.appendChild(el('span','font-weight:600','陪我 47 天了'));
   inner.appendChild(quote);
-  inner.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:14px','阿檜 · 巨木群棧道 28 號 · 1,095 歲'));
+  inner.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:14px',myTree().name + ' · ' + myForest().short + ' · ' + myTree().age));
   inner.appendChild(el('div','font-size:10.5px;color:'+C.text3+';margin-top:22px','點開，看它此刻的山'));
   card.appendChild(inner);
   root.appendChild(card);
@@ -1037,8 +1405,8 @@ function screen6(){
   }
 
   var log = el('div','margin-top:22px;display:flex;flex-direction:column;gap:8px');
-  log.appendChild(el('div','font-size:11px;letter-spacing:2.5px;color:'+C.text3+';margin:0 2px 4px','這些日子，都長在年輪裡'));
-  [['連續 21 天，跟日出一起讀晨報','7月'],['第一次用聲音說了心事','6月'],['那個週末，你真的來看了阿檜','6月']].forEach(function(row){
+  log.appendChild(el('div','font-size:12px;color:'+C.text3+';margin:0 2px 4px','這些日子，都長在年輪裡'));
+  [['連續 21 天，跟日出一起讀晨報','7月'],['第一次用聲音說了心事','6月'],['那個週末，你真的去看了'+myTree().name,'6月']].forEach(function(row){
     var it = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px;white-space:nowrap;font-size:13px;color:'+C.text+';padding:14px 16px;border-radius:18px;' + GLASS);
     it.appendChild(el('span', null, row[0]));
     it.appendChild(el('span','color:'+C.text3+';font-size:11.5px', row[1]));
@@ -1227,12 +1595,12 @@ function screen7(){
   var top = el('div','position:absolute;top:62px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:8px');
   var live = el('span', TAG_ON_IMG);
   live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:'+C.lime+';animation:th-pulse 3s infinite'));
-  live.appendChild(document.createTextNode('LIVE · 阿里山 · 海拔 2,173m'));
+  live.appendChild(document.createTextNode('LIVE · ' + myForest().short + ' · ' + (myTree().elev || myForest().range)));
   top.appendChild(live);
   var wxText = w.src === 'default' ? sc.temp : ('現在 · ' + w.temp + '°C · ' + w.label + (starAmt >= 1 ? ' · 可見星空' : ''));
   top.appendChild(el('span', TAG_ON_IMG, wxText));
   root.appendChild(top);
-  root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text,'阿檜的山'));
+  root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text, myTree().name + '的山'));
 
   var bottom = el('div','position:absolute;left:18px;right:18px;bottom:104px;display:flex;flex-direction:column;align-items:flex-start;gap:10px');
   var on = SND.key === sKey;
@@ -1249,14 +1617,14 @@ function screen7(){
   return root;
 }
 
-var BUILDERS = [screen1, screen2, screen3, screen4, screen5, screen6, screen7];
+var BUILDERS = [screen0, screen1, screen2, screen3, screen4, screen5, screen6, screen7];
 
 /* ── chrome：側欄、浮動分頁列 ───────────────────────────── */
 function renderSidebar(){
   var host = document.getElementById('screenList');
   host.innerHTML = '';
   LABELS.forEach(function(label, i){
-    var n = i+1, a = S.screen === n;
+    var n = i, a = S.screen === n;
     var st = 'display:flex;align-items:center;gap:12px;padding:11px 18px;border-radius:999px;'
       + 'border:1px solid '+(a?'#14301F':'rgba(15,36,24,.12)')+';background:'+(a?'#14301F':'transparent')+';'
       + 'color:'+(a?'#F2F6F0':'#25382B')+';font-size:13.5px;cursor:pointer;text-align:left;transition:background .3s';
@@ -1269,6 +1637,8 @@ function renderSidebar(){
   });
 }
 function renderTabs(){
+  var host0 = document.getElementById('tabbar');
+  host0.style.display = S.screen === 0 ? 'none' : '';   /* 第一次打開的流程不顯示分頁列 */
   var map = {'我的樹':[1,2,4,5], '森林':[3], '風景':[7], '年輪':[6]};
   var to  = {'我的樹':1, '森林':3, '風景':7, '年輪':6};
   var host = document.getElementById('tabbar');
@@ -1283,22 +1653,27 @@ function renderTabs(){
 }
 
 function renderScreen(){
-  ui.chat = null; ui.thinkNode = null; ui.input = null;
+  ui.chat = null; ui.thinkNode = null; ui.input = null; ui.chips = null; ui.headWx = null;
   ui.bCircle = null; ui.bLabel = null; ui.bBtn = null; ui.bBar = null; ui.bFill = null; ui.bNote = null;
   var host = document.getElementById('screenHost');
   host.innerHTML = '';
-  host.appendChild(BUILDERS[S.screen - 1]());
+  host.appendChild(BUILDERS[S.screen]());
 }
 function setScreen(n){
-  if(S.screen === n){ return; }
-  if(S.screen === 3 || S.screen === 7) stopSound();   /* 離開找樹洞或即時風景，聲音淡出 */
+  if(S.screen === n && n !== 0){ return; }
+  if(S.screen === 0 || S.screen === 3 || S.screen === 7) stopSound();   /* 離開找樹洞、第一次打開或即時風景，聲音淡出 */
+  /* 從側欄點「第一次打開」：每次都從頭開始；離開它時，找樹洞的進度不要帶走 */
+  if(n === 0){ S.onb = {step:'arrive'}; resetFind(); }
+  else if(S.screen === 0){ resetFind(); }
   S.screen = n;
   renderScreen(); renderTabs(); renderSidebar();
 }
 
 /* ── 啟動 ───────────────────────────────────────────────── */
+/* 預設從第一次打開開始；?screen=1 之類的網址參數可以直接跳到某個畫面 */
+(function(){ var q = QS.get('screen'); if(q !== null && q !== '' && !isNaN(+q) && BUILDERS[+q]) S.screen = +q; })();
 renderSidebar(); renderTabs(); renderScreen();
-/* 阿檜當地的天氣：一開始抓一次，之後每 10 分鐘更新 */
+/* 三座森林的天氣：一開始抓一次，之後每 10 分鐘更新 */
 fetchWeather();
 setInterval(fetchWeather, 10 * 60 * 1000);
 /* 每分鐘重算山上的時段，讓風景跟著真實時間走 */
