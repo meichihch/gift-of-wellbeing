@@ -46,6 +46,8 @@
     html[data-share] .stage{padding:0;min-height:100vh;min-height:100dvh;display:block}
     html[data-share] #device{width:100vw!important;height:100vh!important;height:100dvh!important;border-radius:0!important;box-shadow:none!important;zoom:1!important}
     html[data-share] #device > div:not(#app){display:none!important}
+    /* 真的手機：瀏覽器自己有狀態列，不用再留假狀態列的 58px；底部讓開 Home 指示條 */
+    html[data-share] #app{--top:calc(env(safe-area-inset-top, 0px) + 18px);--bottom:calc(env(safe-area-inset-bottom, 0px) + 14px)}
   }
 </style>
 </head>
@@ -80,9 +82,9 @@
         </div>
       </div>
     </div>
-    <div id="app" style="position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif;background:radial-gradient(130% 55% at 50% -8%,#2F6142 0%,rgba(47,97,66,0) 62%),radial-gradient(100% 50% at 110% 105%,#1E4D33 0%,rgba(30,77,51,0) 60%),linear-gradient(180deg,#14301F 0%,#0B1A12 100%)">
+    <div id="app" style="position:absolute;inset:0;container-type:size;display:flex;flex-direction:column;overflow:hidden;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif;background:radial-gradient(130% 55% at 50% -8%,#2F6142 0%,rgba(47,97,66,0) 62%),radial-gradient(100% 50% at 110% 105%,#1E4D33 0%,rgba(30,77,51,0) 60%),linear-gradient(180deg,#14301F 0%,#0B1A12 100%)">
       <div id="screenHost" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div>
-      <div id="tabbar" style="position:absolute;left:16px;right:16px;bottom:26px;z-index:40"></div>
+      <div id="tabbar" style="position:absolute;left:16px;right:16px;bottom:var(--bottom,26px);z-index:40"></div>
       <div id="toast" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);background:rgba(10,24,16,.84);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#F2F6F0;font-size:12.5px;padding:11px 18px;border-radius:999px;white-space:nowrap;z-index:80;display:none"></div>
     </div>
     <div style="position:absolute;bottom:0;left:0;right:0;z-index:60;height:34px;display:flex;justify-content:center;align-items:flex-end;padding-bottom:8px;pointer-events:none">
@@ -186,7 +188,8 @@ var PILL_SMALL = 'padding:7px 13px;border-radius:999px;border:1px solid rgba(255
 var TAG_ON_IMG = 'display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(15,36,24,.38);color:'+C.text+';font-size:11.5px;white-space:nowrap;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)';
 var TAG        = 'display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;color:'+C.text+';font-size:12px;white-space:nowrap;' + GLASS;
 var EYEBROW    = 'font-size:12px;color:'+C.lime;
-var SCROLL     = 'flex:1;overflow-y:auto;padding:58px 18px 108px;min-height:0';
+/* 邊距分開寫：padding 簡寫裡放 var()，之後用 cssText 追加樣式時整組會被瀏覽器丟掉 */
+var SCROLL     = 'flex:1;overflow-y:auto;padding-top:var(--top,58px);padding-left:18px;padding-right:18px;padding-bottom:108px;min-height:0';
 
 /* ── 資料 ───────────────────────────────────────────────── */
 /* 畫面編號：0 是第一次打開（onboarding），1–7 是主要畫面 */
@@ -767,28 +770,31 @@ function groundRing(parent, bottom, w, h){
 /* 一片森林：後排的樹小而淡，前排幾棵比較清楚，頭上掛著名牌（名字、樹種、年紀）。
    名牌跟地上的光圈一樣用呼吸的節奏，彼此錯開一點，像各自在呼吸 */
 function forestTeaser(ids){
-  var st = el('div','position:relative;flex:1;min-height:300px;margin:6px -18px 0;overflow:hidden');
+  var st = el('div','position:relative;flex:1;min-height:200px;margin:6px -18px 0;overflow:hidden');
   st.appendChild(el('div','position:absolute;left:0;right:0;bottom:0;height:46%;background:radial-gradient(70% 60% at 50% 100%,rgba(123,227,111,.16) 0%,rgba(123,227,111,0) 70%)'));
   mountMotes(st);
   var GROUND = 26;
-  var plant = function(x, ht, style){
-    var w = el('div','position:absolute;left:'+x+'%;bottom:'+GROUND+'px;transform:translateX(-50%)');
-    w.appendChild(fullTree('position:relative;display:block;height:'+ht+'px;' + style));
+  /* 樹高是「這一塊扣掉名牌要的空間」的比例：螢幕矮，整片森林跟著縮，最高那張名牌也不會被切掉 */
+  var HEAD = 96;
+  var hOf = function(f){ return 'calc((100% - ' + HEAD + 'px) * ' + f + ')'; };
+  var plant = function(x, f, style){
+    var w = el('div','position:absolute;left:'+x+'%;bottom:'+GROUND+'px;height:'+hOf(f)+';transform:translateX(-50%)');
+    w.appendChild(fullTree('position:relative;display:block;height:100%;' + style));
     st.appendChild(w);
   };
   /* 後排 */
-  [[8, 124], [30, 146], [44, 114], [66, 138], [93, 120]].forEach(function(b){
+  [[8, .5], [30, .58], [44, .46], [66, .55], [93, .48]].forEach(function(b){
     plant(b[0], b[1], 'opacity:.22');
   });
   /* 前排：掛名牌的三棵，高度錯開，名牌才不會擠在一起 */
-  var front = [[19, 196], [52, 248], [83, 182]];
+  var front = [[19, .78], [52, 1], [83, .72]];
   ids.forEach(function(id, i){
-    var tr = TREES[id], x = front[i][0], ht = front[i][1];
-    plant(x, ht, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))');
-    var topY = GROUND + ht - 6;   /* 樹梢的高度（從底部算） */
+    var tr = TREES[id], x = front[i][0], f = front[i][1];
+    plant(x, f, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))');
+    var topAt = 'calc(' + (GROUND - 6) + 'px + ' + hOf(f) + ')';   /* 樹梢的高度（從底部算） */
     var delay = (-i * 1.6) + 's';
-    st.appendChild(el('div','position:absolute;left:'+x+'%;bottom:'+topY+'px;width:6px;height:6px;border-radius:50%;background:'+C.lime+';box-shadow:0 0 8px rgba(123,227,111,.8);animation:th-dot 12s ease-in-out '+delay+' infinite'));
-    var tag = el('div','position:absolute;left:'+x+'%;bottom:'+(topY + 3)+'px;display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:th-tag 12s ease-in-out '+delay+' infinite');
+    st.appendChild(el('div','position:absolute;left:'+x+'%;bottom:'+topAt+';width:6px;height:6px;border-radius:50%;background:'+C.lime+';box-shadow:0 0 8px rgba(123,227,111,.8);animation:th-dot 12s ease-in-out '+delay+' infinite'));
+    var tag = el('div','position:absolute;left:'+x+'%;bottom:calc(' + (GROUND - 3) + 'px + ' + hOf(f) + ');display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:th-tag 12s ease-in-out '+delay+' infinite');
     tag.setAttribute('data-tree-tag', id);
     var pill = el('div','padding:6px 11px 7px;border-radius:14px;text-align:center;white-space:nowrap;background:rgba(12,28,19,.55);border:1px solid rgba(123,227,111,.38);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)');
     pill.appendChild(el('div','font-size:13px;font-weight:500;color:'+C.text, tr.name));
@@ -801,14 +807,15 @@ function forestTeaser(ids){
 }
 /* 抵達畫面的主視覺：大一點的樹站在畫面中間，光圈呼吸，旁邊有細小的光點慢慢往上飄 */
 function arrivalStage(){
-  var st = el('div','position:relative;flex:1;min-height:400px;margin:4px -18px 0');
-  st.appendChild(el('div','position:absolute;left:50%;top:46%;width:440px;height:440px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.26) 0%,rgba(123,227,111,.08) 42%,rgba(123,227,111,0) 68%);animation:th-halo 12s ease-in-out infinite'));
+  var st = el('div','position:relative;flex:1;min-height:260px;margin:4px -18px 0');
+  st.appendChild(el('div','position:absolute;left:50%;top:46%;width:min(440px, 110%);aspect-ratio:1;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.26) 0%,rgba(123,227,111,.08) 42%,rgba(123,227,111,0) 68%);animation:th-halo 12s ease-in-out infinite'));
   mountMotes(st);
   var GROUND = 54;
   groundRing(st, GROUND, 300, 70);
-  var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;transform:translateX(-50%)');
-  var sway = el('div','transform-origin:50% 100%;animation:th-sway 14s ease-in-out infinite');
-  sway.appendChild(fullTree('position:relative;display:block;height:340px;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))'));
+  /* 樹的高度跟著螢幕走：約是整個 app 高度的 42%，最高 340px，上面至少留 24px */
+  var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;height:min(340px, 42cqh, calc(100% - '+(GROUND + 34 + 24)+'px));transform:translateX(-50%)');
+  var sway = el('div','height:100%;transform-origin:50% 100%;animation:th-sway 14s ease-in-out infinite');
+  sway.appendChild(fullTree('position:relative;display:block;height:100%;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))'));
   holder.appendChild(sway); st.appendChild(holder);
   return st;
 }
@@ -1325,7 +1332,7 @@ function ringStage(){
 
 /* ── 畫面 ───────────────────────────────────────────────── */
 function screen1(){
-  var root = el('div','flex:1;display:flex;flex-direction:column;min-height:0;padding-top:58px');
+  var root = el('div','flex:1;display:flex;flex-direction:column;min-height:0;padding-top:var(--top,58px)');
   root.setAttribute('data-screen-label','1 說說話');
 
   /* 頭像＋名字，像參考圖首頁的「Hi, Sharry / Welcome Back」 */
@@ -1649,17 +1656,18 @@ function screen0(){
     root.style.cssText += ';display:flex;flex-direction:column';
     var head = el('div','padding-top:8px');
     head.appendChild(el('div', EYEBROW, '現在的山上'));
-    var tags = el('div','display:flex;flex-wrap:wrap;gap:6px;margin-top:10px');
+    /* 三個天氣標籤排成一行：窄螢幕也不換行，免得擠到樹 */
+    var tags = el('div','display:flex;flex-wrap:nowrap;gap:6px;margin-top:10px;overflow-x:auto');
     FOREST_ORDER.forEach(function(fid){
       var s = wxShort(fid);
-      tags.appendChild(el('span', TAG, FORESTS[fid].short + (s ? ' · ' + s : '')));
+      tags.appendChild(el('span', TAG + ';padding:6px 10px;font-size:11.5px;flex-shrink:0', FORESTS[fid].short + (s ? ' · ' + s : '')));
     });
     head.appendChild(tags);
     root.appendChild(head);
     root.appendChild(arrivalStage());
-    root.appendChild(el('div','font-size:52px;font-weight:300;letter-spacing:10px;line-height:1;color:'+C.text+';text-align:center', APP.name));
-    root.appendChild(el('div','font-size:15px;color:'+C.text2+';text-align:center;margin-top:14px', APP.tagline));
-    var go1 = el('div','margin-top:26px');
+    root.appendChild(el('div','font-size:clamp(40px, 6cqh, 52px);font-weight:300;letter-spacing:10px;line-height:1;color:'+C.text+';text-align:center', APP.name));
+    root.appendChild(el('div','font-size:15px;color:'+C.text2+';text-align:center;margin-top:clamp(10px, 1.6cqh, 14px)', APP.tagline));
+    var go1 = el('div','margin-top:clamp(16px, 3cqh, 26px)');
     /* 這一下點擊順便打開聲音：之後揭曉樹洞時，聲音才放得出來 */
     go1.appendChild(button(BTN_PRIMARY, '開始', function(){ var c = sndCtx(); if(c && c.resume) c.resume(); S.onb.step = 'about'; renderScreen(); }, 'background:#E7F1E4'));
     root.appendChild(go1);
@@ -1672,8 +1680,8 @@ function screen0(){
     var bb = button(CIRCLE, '‹', onbGo('arrive'), 'background:rgba(255,255,255,.14)');
     bb.setAttribute('aria-label','上一步');
     back.appendChild(bb); root.appendChild(back);
-    root.appendChild(el('div', EYEBROW + ';margin-top:30px', '認識這些樹'));
-    root.appendChild(el('div','font-size:24px;font-weight:300;line-height:1.7;letter-spacing:.5px;color:'+C.text+';margin-top:14px',
+    root.appendChild(el('div', EYEBROW + ';margin-top:clamp(10px, 3.4cqh, 30px)', '認識這些樹'));
+    root.appendChild(el('div','font-size:clamp(19px, 2.75cqh, 24px);font-weight:300;line-height:1.65;letter-spacing:.5px;color:'+C.text+';margin-top:clamp(8px, 1.6cqh, 14px)',
       '這裡的每個樹洞，都代表一棵真的樹。它們長在台灣的山裡，有編號、有年紀，會與你分享山上的天氣和聲音。'));
     /* 一小片森林，前排三棵掛著名牌（一座森林一棵），不是選項 */
     root.appendChild(forestTeaser(['t2', 'l18', 'd2']));
@@ -2029,7 +2037,7 @@ function screen7(){
   if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+(night ? 0.14 : 0.32)+') 100%)'));
   if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'snow') mountPrecip(root, w.kind, w.heavy || 0.6);
 
-  var top = el('div','position:absolute;top:62px;left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:8px');
+  var top = el('div','position:absolute;top:calc(var(--top,58px) + 4px);left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:8px');
   var live = el('span', TAG_ON_IMG);
   live.appendChild(el('span','width:7px;height:7px;border-radius:50%;background:'+C.lime+';animation:th-pulse 3s infinite'));
   live.appendChild(document.createTextNode('LIVE · ' + myForest().short + ' · ' + (myTree().elev || myForest().range)));
@@ -2037,7 +2045,7 @@ function screen7(){
   var wxText = w.src === 'default' ? sc.temp : ('現在 · ' + w.temp + '°C · ' + w.label + (starAmt >= 1 ? ' · 看得到星星' : ''));
   top.appendChild(el('span', TAG_ON_IMG, wxText));
   root.appendChild(top);
-  root.appendChild(el('div','position:absolute;top:112px;left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text, myTree().name + '的山'));
+  root.appendChild(el('div','position:absolute;top:calc(var(--top,58px) + 54px);left:20px;right:20px;font-size:40px;font-weight:300;line-height:1.15;letter-spacing:2px;color:'+C.text, myTree().name + '的山'));
 
   var bottom = el('div','position:absolute;left:18px;right:18px;bottom:104px;display:flex;flex-direction:column;align-items:flex-start;gap:10px');
   var on = SND.key === sKey;
