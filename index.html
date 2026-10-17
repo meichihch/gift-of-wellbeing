@@ -653,7 +653,14 @@ function tintedTree(hex){
     /* 線稿很細，縮小後會透出天空、看起來發白：把線加粗成比較飽滿的剪影 */
     var img = g.getImageData(0, 0, W, H), d = img.data, al = new Uint8ClampedArray(W*H);
     for(var i=0; i<W*H; i++) al[i] = d[i*4+3];
-    var dil = dilateAlpha(al, W, H, Math.round(BG_LOOK.lineRadius));
+    /* 半徑可以是小數：算出前後兩個整數半徑的結果，再依小數部分混合，數值才會連續變化 */
+    var rr = Math.max(0, BG_LOOK.lineRadius), r0 = Math.floor(rr), fr = rr - r0;
+    var dil = dilateAlpha(al, W, H, r0);
+    if(fr > 0){
+      var dil1 = dilateAlpha(al, W, H, r0 + 1), mix = new Uint8ClampedArray(W*H);
+      for(var mi=0; mi<W*H; mi++) mix[mi] = dil[mi] + (dil1[mi] - dil[mi]) * fr;
+      dil = mix;
+    }
     var rgb = hexRgb255(hex);
     for(var j=0; j<W*H; j++){ d[j*4] = rgb[0]; d[j*4+1] = rgb[1]; d[j*4+2] = rgb[2]; d[j*4+3] = dil[j]; }
     var line = document.createElement('canvas'); line.width = W; line.height = H;
