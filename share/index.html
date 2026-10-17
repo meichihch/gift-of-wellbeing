@@ -535,19 +535,23 @@ function fullTreeUrl(tint){
     var b = base.getContext('2d');
     b.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790);
     b.save(); b.translate(W, 0); b.scale(-1, 1); b.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790); b.restore();
-    /* 線條加粗：真正的膨脹，每個像素取半徑內最不透明的那個，不會越疊越亮、細節也留得住 */
+    /* 線條加粗：每個像素看周圍的點，離得越遠、影響越小（半徑 r 外 1 格內慢慢淡出），取最不透明的那個。
+       跟以前「只算整格」不同，半徑從 0.7 調到 0.8 只會多一點點，不會突然跳一格 */
     var rad = TREE_LOOK.lineRadius, thick = base;
     if(rad > 0){
       var src = b.getImageData(0, 0, W, H), d = src.data, dil = b.createImageData(W, H), od = dil.data;
-      var offs = [];
-      for(var dy=-Math.ceil(rad); dy<=Math.ceil(rad); dy++) for(var dx=-Math.ceil(rad); dx<=Math.ceil(rad); dx++) if(dx*dx + dy*dy <= rad*rad + 0.5) offs.push([dx, dy]);
+      var offs = [], R = Math.ceil(rad + 1);
+      for(var dy=-R; dy<=R; dy++) for(var dx=-R; dx<=R; dx++){
+        var dist = Math.sqrt(dx*dx + dy*dy), wgt = dist === 0 ? 1 : Math.max(0, Math.min(1, rad - dist + 1));
+        if(wgt > 0) offs.push([dx, dy, wgt]);
+      }
       for(var y=0; y<H; y++) for(var x=0; x<W; x++){
-        var best = -1, bi = 0;
+        var best = 0, bi = (y*W + x)*4;
         for(var q=0; q<offs.length; q++){
           var xx = x + offs[q][0], yy = y + offs[q][1];
           if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
-          var ii = (yy*W + xx)*4;
-          if(d[ii+3] > best){ best = d[ii+3]; bi = ii; }
+          var ii = (yy*W + xx)*4, v = d[ii+3] * offs[q][2];
+          if(v > best){ best = v; bi = ii; }
         }
         var oi = (y*W + x)*4;
         od[oi] = d[bi]; od[oi+1] = d[bi+1]; od[oi+2] = d[bi+2]; od[oi+3] = best;
@@ -575,7 +579,7 @@ function fullTreeUrl(tint){
   return FULL_CACHE[key];
 }
 /* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
-var TREE_LOOK = { lineRadius:1, bodyReach:8, bodyAlpha:0.08 };
+var TREE_LOOK = { lineRadius:0.9, bodyReach:8, bodyAlpha:0.08 };   /* 0.9 跟以前的 1 看起來差不多 */
 function fullTree(style, tint){
   var wrap = el('div','position:absolute;pointer-events:none;aspect-ratio:'+(TREE_AXIS_PX*2)+' / 790;' + style);
   var putImg = function(url){
