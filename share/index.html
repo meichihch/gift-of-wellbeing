@@ -944,6 +944,8 @@ function sndCtx(){
   if(!SND.ctx){
     var AC = window.AudioContext || window.webkitAudioContext;
     if(!AC) return null;
+    /* iPhone：把網頁聲音標成「環境音」，手機切到靜音時就不出聲，也不會打斷正在聽的音樂（Safari 16.4 以後才有） */
+    try{ if(navigator.audioSession) navigator.audioSession.type = 'ambient'; }catch(e){}
     SND.ctx = new AC();
     /* 輸出端的壓縮器：聲音疊在一起時不會爆音 */
     SND.out = SND.ctx.createDynamicsCompressor();
@@ -2291,7 +2293,16 @@ window.__TH = {
     if(SND.bus && SND.ctx) SND.bus.gain.setTargetAtTime(Math.max(0.0001, 0.9*TUNE.volume), SND.ctx.currentTime, 0.1);
     if(S.screen === 7) renderScreen();
   },
-  mute: function(on){ S.sceneMuted = !!on; if(on) stopSound(); else if(S.screen === 7) renderScreen(); }
+  mute: function(on){ S.sceneMuted = !!on; if(on) stopSound(); else if(S.screen === 7) renderScreen(); },
+  /* 測試用：現在在播哪一組聲音、輸出的音量大小 */
+  soundKey: function(){ return SND.key; },
+  level: function(){
+    if(!SND.ctx) return 0;
+    if(!SND.an){ SND.an = SND.ctx.createAnalyser(); SND.an.fftSize = 2048; SND.out.connect(SND.an); }
+    var buf = new Float32Array(SND.an.fftSize); SND.an.getFloatTimeDomainData(buf);
+    var sum = 0; for(var i=0;i<buf.length;i++) sum += buf[i]*buf[i];
+    return Math.sqrt(sum / buf.length);
+  }
 };
 
 /* ── 啟動 ───────────────────────────────────────────────── */
