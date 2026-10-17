@@ -2265,6 +2265,78 @@ function mountMist(root, o){
   requestAnimationFrame(frame);
 }
 
+/* ── 天空的雲：一朵朵用好幾團大小不一的圓疊起來，上緣一顆顆鼓起、底部比較平、邊緣柔和，
+   每朵形狀都不同；晴天的薄雲做成細長一絲一絲的。整朵一起往右飄、慢慢變濃變淡 ── */
+function cloudSprite(hex, wispy){
+  var W = 360, H = 170, c = document.createElement('canvas'); c.width = W; c.height = H;
+  var g = c.getContext('2d'), puff = function(x, y, r, a){
+    var gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, 'rgba(255,255,255,'+a+')'); gr.addColorStop(0.55, 'rgba(255,255,255,'+(a*0.75)+')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill();
+  };
+  if(wispy){
+    /* 薄雲：一串扁扁的小團，沿著微微斜的線排開 */
+    var n = 9 + Math.floor(Math.random()*5), slope = (Math.random() - 0.5)*0.25;
+    for(var i=0; i<n; i++){
+      var t = i/(n - 1), x = 30 + t*300 + (Math.random() - 0.5)*20, y = 85 + (t - 0.5)*300*slope + (Math.random() - 0.5)*10;
+      g.save(); g.translate(x, y); g.scale(1, 0.38); puff(0, 0, 26 + Math.random()*22, 0.55); g.restore();
+    }
+  } else {
+    /* 一朵雲：中間的團比較大、兩邊漸小；底部再鋪一條讓它平一點 */
+    var k = 6 + Math.floor(Math.random()*4), base = 112;
+    for(var j=0; j<k; j++){
+      var u = j/(k - 1), bell = Math.exp(-Math.pow((u - 0.5)/0.32, 2));
+      var r = 30 + bell*34 + Math.random()*10;                         /* 兩端的團也夠大，才會跟中間連在一起，不會像掉出來的球 */
+      puff(80 + u*200 + (Math.random() - 0.5)*12, base - r*0.5 - bell*10 + (Math.random() - 0.5)*6, r, 0.85);
+    }
+    for(var q=0; q<3; q++) puff(120 + Math.random()*120, base - 30 - bell*0 - Math.random()*20, 22 + Math.random()*16, 0.7);   /* 中間上面再冒幾顆 */
+    g.save(); g.translate(W/2, base + 2); g.scale(1, 0.22); puff(0, 0, 135, 0.6); g.restore();
+  }
+  /* 邊緣再柔一點（有的瀏覽器不支援畫布模糊，就維持原本柔和的圓） */
+  var out = document.createElement('canvas'); out.width = W; out.height = H;
+  var o = out.getContext('2d');
+  if('filter' in o) o.filter = 'blur(' + (wispy ? 3 : 4) + 'px)';
+  o.drawImage(c, 0, 0);
+  if('filter' in o) o.filter = 'none';
+  o.globalCompositeOperation = 'source-in'; o.fillStyle = hex; o.fillRect(0, 0, W, H);
+  return out;
+}
+/* o：color、n 幾朵、y0／y1 在畫面高度的哪一段、size 寬度範圍（px）、alpha、speed（px/s）、wispy 薄雲 */
+function mountClouds(root, o){
+  if(!(o.alpha > 0.005) || !(o.n > 0)) return;
+  var cv = document.createElement('canvas');
+  cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
+  cv.setAttribute('aria-hidden','true');
+  root.appendChild(cv);
+  var still = reduceMotion(), sprites = [], R = function(a){ return a[0] + Math.random()*(a[1] - a[0]); };
+  for(var i=0; i<5; i++) sprites.push(cloudSprite(o.color, o.wispy));
+  var list = null, last = performance.now();
+  function make(w, h, anywhere){
+    var cw = R(o.size), spr = sprites[Math.floor(Math.random()*sprites.length)];
+    return { spr:spr, w:cw, h:cw*170/360, x: anywhere ? -cw + Math.random()*(w + cw) : -cw - Math.random()*80,
+             y: h*(o.y0 + Math.random()*(o.y1 - o.y0)), v: R(o.speed)*(0.8 + cw/600), a: o.alpha*(0.6 + Math.random()*0.4),
+             w1: 0.15 + Math.random()*0.25, p1: Math.random()*6.283, flip: Math.random() < 0.5 };
+  }
+  function frame(nowT){
+    if(!cv.isConnected) return;
+    var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); list = null; }
+    if(!list){ list = []; for(var i=0; i<o.n; i++) list.push(make(w, h, true)); list.sort(function(a, b){ return a.w - b.w; }); }
+    var dt = Math.min(0.05, (nowT - last)/1000), t = nowT/1000; last = nowT;
+    var g = cv.getContext('2d');
+    g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+    list.forEach(function(c, i){
+      if(!still){ c.x += c.v*dt; if(c.x > w + 10) list[i] = c = make(w, h, false); }
+      g.globalAlpha = Math.min(1, c.a*(still ? 1 : 0.8 + 0.2*Math.sin(t*c.w1 + c.p1)));
+      if(c.flip){ g.save(); g.translate(c.x + c.w, c.y); g.scale(-1, 1); g.drawImage(c.spr, 0, 0, c.w, c.h); g.restore(); }
+      else g.drawImage(c.spr, c.x, c.y, c.w, c.h);
+    });
+    g.globalAlpha = 1;
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
 function screen7(){
   var tod = curTod(), sc = SCENES[tod], w = nowWeather(tod), night = tod === '夜';
   var root = el('div','flex:1;position:relative;overflow:hidden;background:'+sc.sky+';min-height:0');
@@ -2286,8 +2358,9 @@ function screen7(){
   /* 天空的雲：很多霧團往右飄；晴天只有幾絲薄雲，晴朗的晚上不放（要看星星） */
   var cloudCol = night ? '#33453B' : dim >= 0.3 ? '#8C9892' : tod === '暮' ? '#D9C3A2' : '#DCE5DD';
   var cloudA = (night ? .5 : dim >= 0.3 ? .42 : .34) * TUNE.cloudOpacity;
-  var cloudN = clouds > 0 ? clouds*4 + 2 : (night ? 0 : 3);
-  mountMist(root, { color:cloudCol, n:cloudN, y0:.1, y1:.4, rx:[70,150], ry:[18,38], alpha: clouds > 0 ? cloudA : cloudA*0.45, speed:[10*TUNE.cloudSpeed, 20*TUNE.cloudSpeed], bob:4 });
+  var cloudN = clouds > 0 ? clouds*2 + 2 : (night ? 0 : 3);
+  mountClouds(root, { color:cloudCol, n:cloudN, y0:.06, y1:.36, size: clouds > 0 ? [170, 320] : [200, 340], wispy: clouds === 0,
+                      alpha: (clouds > 0 ? cloudA*1.6 : cloudA*0.9), speed:[8*TUNE.cloudSpeed, 16*TUNE.cloudSpeed] });
   /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
      也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
   var TREE_X = TUNE.treeX;
