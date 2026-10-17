@@ -571,7 +571,7 @@ function fullTreeUrl(){
   });
   return FULL_TREE_P;
 }
-/* 線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改 */
+/* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
 var TREE_LOOK = { lineRadius:1, bodyReach:8, bodyAlpha:0.08 };
 function fullTree(style){
   var wrap = el('div','position:absolute;pointer-events:none;aspect-ratio:'+(TREE_AXIS_PX*2)+' / 790;' + style);
@@ -628,21 +628,48 @@ function treeSrc(){
   if(!TREE_SRC) TREE_SRC = new Promise(function(ok, no){ var im = new Image(); im.onload = function(){ ok(im); }; im.onerror = no; im.src = 'assets/cypress-line.png'; });
   return TREE_SRC;
 }
+/* 背景樹（剪影）的線條：加粗半徑、樹身底色濃度、樹身範圍。調校頁可以改，跟主角分開 */
+var BG_LOOK = { lineRadius:4, bodyAlpha:0, bodyReach:8 };
+/* 只看透明度的膨脹：先橫向、再直向取最大值（方形範圍），半徑大也很快 */
+function dilateAlpha(a, W, H, R){
+  if(R <= 0) return a;
+  var t = new Uint8ClampedArray(W*H), o = new Uint8ClampedArray(W*H), x, y, k, m;
+  for(y=0; y<H; y++) for(x=0; x<W; x++){ m = 0; for(k=-R; k<=R; k++){ var xx = x + k; if(xx >= 0 && xx < W && a[y*W+xx] > m) m = a[y*W+xx]; } t[y*W+x] = m; }
+  for(y=0; y<H; y++) for(x=0; x<W; x++){ m = 0; for(k=-R; k<=R; k++){ var yy = y + k; if(yy >= 0 && yy < H && t[yy*W+x] > m) m = t[yy*W+x]; } o[y*W+x] = m; }
+  return o;
+}
 function tintedTree(hex){
-  if(!TINTED[hex]) TINTED[hex] = treeSrc().then(function(im){
-    var cv = document.createElement('canvas'); cv.width = 363; cv.height = 790;
+  var key = hex + JSON.stringify(BG_LOOK);
+  if(!TINTED[key]) TINTED[key] = treeSrc().then(function(im){
+    var W = 363, H = 790;
+    var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     var g = cv.getContext('2d');
     g.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790);
-    g.save(); g.translate(363, 0); g.scale(-1, 1); g.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790); g.restore();
-    g.globalCompositeOperation = 'source-in'; g.fillStyle = hex; g.fillRect(0, 0, 363, 790);
-    /* 線稿很細，縮小後會透出天空、看起來發白：往四周疊幾次，把線加粗成比較飽滿的剪影 */
-    var out = document.createElement('canvas'); out.width = 363; out.height = 790;
+    g.save(); g.translate(W, 0); g.scale(-1, 1); g.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790); g.restore();
+    /* 線稿很細，縮小後會透出天空、看起來發白：把線加粗成比較飽滿的剪影 */
+    var img = g.getImageData(0, 0, W, H), d = img.data, al = new Uint8ClampedArray(W*H);
+    for(var i=0; i<W*H; i++) al[i] = d[i*4+3];
+    var dil = dilateAlpha(al, W, H, Math.round(BG_LOOK.lineRadius));
+    var rgb = hexRgb255(hex);
+    for(var j=0; j<W*H; j++){ d[j*4] = rgb[0]; d[j*4+1] = rgb[1]; d[j*4+2] = rgb[2]; d[j*4+3] = dil[j]; }
+    var line = document.createElement('canvas'); line.width = W; line.height = H;
+    line.getContext('2d').putImageData(img, 0, 0);
+    var out = document.createElement('canvas'); out.width = W; out.height = H;
     var o = out.getContext('2d');
-    for(var r=0; r<=5; r+=2.5) for(var k=0; k<8; k++){ var a = k*Math.PI/4; o.drawImage(cv, Math.cos(a)*r, Math.sin(a)*r); }
+    /* 樹身：加粗後的剪影再往外擴、模糊，很淡地鋪在後面 */
+    if(BG_LOOK.bodyAlpha > 0){
+      o.globalAlpha = BG_LOOK.bodyAlpha;
+      if('filter' in o) o.filter = 'blur(' + Math.max(2, BG_LOOK.bodyReach/2) + 'px)';
+      for(var r=2; r<=BG_LOOK.bodyReach; r+=2) for(var k2=0; k2<12; k2++){ var an = k2*Math.PI/6; o.drawImage(line, Math.cos(an)*r, Math.sin(an)*r); }
+      if('filter' in o) o.filter = 'none';
+      o.globalAlpha = 1;
+    }
+    o.drawImage(line, 0, 0);
     return canvasUrl(out);
   });
-  return TINTED[hex];
+  return TINTED[key];
 }
+function hexRgb255(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
 /* 山景小圖：遠山、長滿針葉樹的稜線、谷裡的雲海、近坡上的樹群，主樹站在坡上，枝頭偶爾有鳥。
    kind 是天氣；seed 決定山的形狀，每座森林各自不同 */
 function miniScene(h, tags, kind, seed){
@@ -2286,7 +2313,7 @@ window.__TH = {
     WX_FORCE = wx || null;
     if(S.screen !== 7) setScreen(7); else renderScreen();
   },
-  LOOK: TREE_LOOK, lookKey: JSON.stringify(TREE_LOOK),
+  LOOK: TREE_LOOK, BGLOOK: BG_LOOK, lookKey: JSON.stringify(TREE_LOOK),
   apply: function(){
     STARFIELD = null;
     if(window.__TH.lookKey !== JSON.stringify(TREE_LOOK)){ window.__TH.lookKey = JSON.stringify(TREE_LOOK); FULL_TREE_P = null; FULL_TREE_DATA = null; }

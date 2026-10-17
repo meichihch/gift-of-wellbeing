@@ -98,18 +98,22 @@ var GROUPS = [
   {g:'閃電（雷雨）', items:[['lightningEvery','平均幾秒閃一次',3,30,0.5],['flash','閃光亮度',0.2,2,0.05]]},
   {g:'山', items:[['peakHeight','遠山的高度',0.3,2,0.05],['haze','遠景的霧氣',0,2.5,0.05],['cloudSea','谷裡的雲海',0,2.5,0.05],['foreTree','左下角的大樹',0,1,0.05]]},
   {g:'樹', items:[['treeX','左右位置（%）',30,75,1],['treeHeight','高度（%）',25,60,1],['treeNightOpacity','晚上的亮度',0.2,1,0.02],['treeSway','擺動幅度（度）',0,3,0.1],['swaySpeed','擺一輪幾秒',4,30,1],['companions','旁邊的樹',0,3,0.05]]},
-  {g:'樹的線條（所有畫面的樹都會變）', look:true, items:[['lineRadius','線條加粗',0,2,0.5],['bodyAlpha','樹身底色',0,0.3,0.01],['bodyReach','樹身範圍',2,16,2]]},
+  {g:'主角的線條（發光的那棵樹，所有畫面都會變）', look:'main', items:[['lineRadius','線條加粗',0,2,0.5],['bodyAlpha','樹身底色',0,0.3,0.01],['bodyReach','樹身範圍',2,16,2]]},
+  {g:'背景樹的線條（山上的剪影、左下角大樹、晨報小圖）', look:'bg', items:[['lineRadius','線條加粗',0,10,1],['bodyAlpha','樹身底色',0,1,0.05],['bodyReach','樹身範圍',2,24,2]]},
   {g:'聲音', items:[['volume','音量',0,1.5,0.05]]}
 ];
 
 /* 目前的選擇與設定：存在這台電腦的瀏覽器裡，重新整理不會不見 */
 var state = { tod:'夜', wx:'clear', sound:false };
-var tune = {}, look = {};
+var tune = {}, look = {}, bglook = {};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}')); }catch(e){}
-try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); }catch(e){}
-function save(){ try{ localStorage.setItem('th-lab-state', JSON.stringify(state)); localStorage.setItem('th-lab-tune', JSON.stringify(tune)); localStorage.setItem('th-lab-look', JSON.stringify(look)); }catch(e){} }
+try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); }catch(e){}
+function save(){ try{ localStorage.setItem('th-lab-state', JSON.stringify(state)); localStorage.setItem('th-lab-tune', JSON.stringify(tune)); localStorage.setItem('th-lab-look', JSON.stringify(look)); localStorage.setItem('th-lab-bglook', JSON.stringify(bglook)); }catch(e){} }
 
-var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineRadius:1, bodyAlpha:0.08, bodyReach:8 };
+var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineRadius:1, bodyAlpha:0.08, bodyReach:8 }, BG_DEF = { lineRadius:4, bodyAlpha:0, bodyReach:8 };
+/* 每一組的值存在哪、原本是多少：主角線條、背景樹線條、其他動畫參數各一份 */
+function storeOf(G){ return G.look === 'main' ? look : G.look === 'bg' ? bglook : tune; }
+function defOf(G, key){ return G.look === 'main' ? LOOK_DEF[key] : G.look === 'bg' ? BG_DEF[key] : DEF[key]; }
 function src(extra){ return '../share/?screen=7&mute=1' + (extra || ''); }
 
 /* 把設定推進某個 iframe 裡的原型 */
@@ -117,6 +121,7 @@ function push(win, tod, wx, keepSound){
   var th = win && win.__TH; if(!th) return;
   Object.keys(th.DEFAULT).forEach(function(k){ th.TUNE[k] = (k in tune) ? tune[k] : th.DEFAULT[k]; });
   Object.keys(LOOK_DEF).forEach(function(k){ th.LOOK[k] = (k in look) ? look[k] : LOOK_DEF[k]; });
+  if(th.BGLOOK) Object.keys(BG_DEF).forEach(function(k){ th.BGLOOK[k] = (k in bglook) ? bglook[k] : BG_DEF[k]; });
   if(!keepSound) th.mute(true);
   th.scene(tod, wx);
   th.apply();
@@ -172,10 +177,10 @@ function buildGroups(){
     var box = document.createElement('div'); box.className = 'group';
     var h = document.createElement('h3'); h.appendChild(document.createTextNode(G.g));
     var gr = document.createElement('button'); gr.textContent = '重設這組';
-    gr.onclick = function(){ G.items.forEach(function(it){ delete (G.look ? look : tune)[it[0]]; }); save(); buildGroups(); applySoon(); };
+    gr.onclick = function(){ G.items.forEach(function(it){ delete storeOf(G)[it[0]]; }); save(); buildGroups(); applySoon(); };
     h.appendChild(gr); box.appendChild(h);
     G.items.forEach(function(it){
-      var key = it[0], store = G.look ? look : tune, def = G.look ? LOOK_DEF[key] : DEF[key];
+      var key = it[0], store = storeOf(G), def = defOf(G, key);
       var row = document.createElement('div'); row.className = 'sl';
       var lab = document.createElement('label'); lab.innerHTML = '<i></i>'; lab.appendChild(document.createTextNode(it[1]));
       var val = (key in store) ? store[key] : def;   /* 真正的值，可以超出滑桿的範圍 */
@@ -230,15 +235,15 @@ function buildGroups(){
 }
 
 document.getElementById('reset').onclick = function(){
-  tune = {}; look = {}; save(); buildGroups(); applySoon();
+  tune = {}; look = {}; bglook = {}; save(); buildGroups(); applySoon();
   document.getElementById('msg').textContent = '已經回到原本的設定';
 };
 document.getElementById('copy').onclick = function(){
   var lines = [];
   GROUPS.forEach(function(G){
     G.items.forEach(function(it){
-      var store = G.look ? look : tune, def = G.look ? LOOK_DEF[it[0]] : DEF[it[0]];
-      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + (+store[it[0]].toFixed(4)) + '（原本 ' + fmt(def, it[4]) + '）  ' + it[0] + '=' + store[it[0]]);
+      var store = storeOf(G), def = defOf(G, it[0]);
+      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + (+store[it[0]].toFixed(4)) + '（原本 ' + fmt(def, it[4]) + '）  ' + (G.look === 'bg' ? 'BG_LOOK.' : G.look === 'main' ? 'TREE_LOOK.' : '') + it[0] + '=' + store[it[0]]);
     });
   });
   var text = lines.length ? ('即時風景調校設定\n' + lines.join('\n')) : '即時風景調校設定：沒有改動';
