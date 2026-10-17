@@ -2337,6 +2337,18 @@ function FieldLayer(field, stepSec, key){
   if(!FIELD_INIT[key]) FIELD_INIT[key] = [full(0), full(1)];
   put(this.A, FIELD_INIT[key][0]); put(this.B, FIELD_INIT[key][1]);
   this.next = new ImageData(W, H); this.nextRow = 0; this.mix = 0;
+  /* 混合用的畫布：先把現在和下一刻兩張依比例「相加」混好，再一次畫到畫面上。
+     直接把兩張半透明疊在畫面上，轉換到一半時總濃度會掉，厚的地方就會閃 */
+  this.blend = strip(); this.blendMix = -1;
+  this.mixed = function(){
+    if(self.blendMix === self.mix) return self.blend;
+    var g = self.blend.getContext('2d');
+    g.globalCompositeOperation = 'copy'; g.globalAlpha = 1 - self.mix; g.drawImage(self.A, 0, 0);
+    g.globalCompositeOperation = 'lighter'; g.globalAlpha = self.mix; g.drawImage(self.B, 0, 0);
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    self.blendMix = self.mix;
+    return self.blend;
+  };
   this.advance = function(dt, morph){
     if(morph <= 0) return;
     /* 下一刻的那張：每一幀算幾列，在交叉淡入結束前算完 */
@@ -2374,10 +2386,9 @@ function mountField(root, layers){
     layers.forEach(function(L){
       if(!still){ L.off += L.speed*dt; L.fl.advance(dt, TUNE.morphSpeed); }
       var tw = w*L.scale, th = h*(L.y1 - L.y0), y = h*L.y0;
-      var x = -((L.off % tw) + tw) % tw, m = L.fl.mix;
-      /* 現在這張淡出、下一刻那張淡入：邊緣看起來在慢慢長出、散開 */
-      g.globalAlpha = Math.min(1, L.alpha*(1 - m)); g.drawImage(L.fl.A, x, y, tw*2, th);
-      g.globalAlpha = Math.min(1, L.alpha*m);       g.drawImage(L.fl.B, x, y, tw*2, th);
+      var x = -((L.off % tw) + tw) % tw;
+      /* 現在這張淡出、下一刻那張淡入（已經精確混好）：邊緣慢慢長出、散開，濃度不會忽淡忽濃 */
+      g.globalAlpha = Math.min(1, L.alpha); g.drawImage(L.fl.mixed(), x, y, tw*2, th);
     });
     g.globalAlpha = 1;
     requestAnimationFrame(frame);
