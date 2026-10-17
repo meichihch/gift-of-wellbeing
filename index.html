@@ -444,14 +444,14 @@ function wmo(code){
   if(code === 2)                    return {kind:'partly', label:'晴時多雲'};
   if(code === 3)                    return {kind:'cloudy', label:'陰'};
   if(code === 45 || code === 48)    return {kind:'fog',    label:'起霧'};
-  if(code >= 51 && code <= 57)      return {kind:'rain',   label:'毛毛雨', heavy:0.3};
-  if(code >= 61 && code <= 67)      return {kind:'rain',   label:code >= 65 ? '大雨' : '下雨', heavy:code >= 65 ? 1 : 0.6};
-  if(code >= 80 && code <= 82)      return {kind:'rain',   label:'陣雨', heavy:code === 82 ? 1 : 0.7};
+  if(code >= 51 && code <= 57)      return {kind:'rain',   label:'毛毛雨', heavy:0.3, sub:'drizzle'};
+  if(code >= 61 && code <= 67)      return {kind:'rain',   label:code >= 65 ? '大雨' : '下雨', heavy:code >= 65 ? 1 : 0.6, sub:'rain'};
+  if(code >= 80 && code <= 82)      return {kind:'rain',   label:'陣雨', heavy:code === 82 ? 1 : 0.7, sub:'shower'};
   if((code >= 71 && code <= 77) || code === 85 || code === 86) return {kind:'snow', label:'下雪'};
-  if(code >= 95)                    return {kind:'storm',  label:'雷雨', heavy:1};
+  if(code >= 95)                    return {kind:'storm',  label:'雷雨', heavy:1, sub:'storm'};
   return {kind:'cloudy', label:'多雲'};
 }
-var WX_FORCE_CODE = {clear:0, partly:2, cloudy:3, fog:45, rain:63, storm:95, snow:73};
+var WX_FORCE_CODE = {clear:0, partly:2, cloudy:3, fog:45, drizzle:53, rain:63, shower:81, storm:95, snow:73};
 var TOD_TEMP = {'晨':14, '午':19, '暮':16, '夜':9};
 var TOD_KIND = {'晨':'fog', '午':'partly', '暮':'clear', '夜':'clear'};   /* 沒有資料時的時段預設 */
 /* fid：哪座森林，沒給就是「我的樹」所在的森林 */
@@ -684,6 +684,11 @@ function tintedTree(hex){
     return canvasUrl(out);
   });
   return TINTED[key];
+}
+/* 兩個顏色依比例混合（0＝a、1＝b） */
+function mixHex(a, b, t){
+  var A = hexRgb255(a), B = hexRgb255(b);
+  return '#' + [0,1,2].map(function(i){ var v = Math.round(A[i] + (B[i] - A[i])*t); return (v < 16 ? '0' : '') + v.toString(16); }).join('');
 }
 function hexRgb255(h){ return [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)]; }
 /* 山景小圖：遠山、長滿針葉樹的稜線、谷裡的雲海、近坡上的樹群，主樹站在坡上，枝頭偶爾有鳥。
@@ -2137,11 +2142,18 @@ var LAND_PAL = {
 var LAND_UID = 0;
 /* 白天主樹的顏色：比山肩深一階，同一個色相 */
 var HERO_TINT = {'晨':'#18301F', '午':'#122B1B', '暮':'#1C2216'};
-function landscape(tod, kind, treeX){
+function landscape(tod, kind, treeX, sub){
   var P = JSON.parse(JSON.stringify(LAND_PAL[tod])), night = tod === '夜', uid = 'ls' + (++LAND_UID);
   if(kind === 'snow'){ P.near = night ? '#3B4A43' : '#B9C4BF'; P.fore = night ? '#2A3631' : '#9AA8A1'; P.far = night ? '#3A4A44' : '#D4DDD9'; }
+  /* 雨天：遠山、中景和遠景的霧都往雨雲的灰色靠，看起來是被雲霧吞進去，不是晴天的山 */
+  if(kind === 'rain' || kind === 'storm'){
+    var rg = night ? '#1E2924' : kind === 'storm' ? '#6A7470' : '#A3ADA8';
+    P.far = mixHex(P.far, rg, .6); P.mid = mixHex(P.mid, rg, .3); P.conifer = mixHex(P.conifer, rg, .22); P.haze = rg;
+  }
   var sea  = Math.min(1, ({'晨':.55, '午':.3, '暮':.35, '夜':.12}[tod]) * ({fog:1.6, partly:1, clear: tod === '晨' ? 1 : .6, cloudy:.8, rain:.5, storm:.3, snow:.6}[kind] || 1) * TUNE.cloudSea);
-  var haze = Math.min(.9, ({fog:.55, cloudy:.25, rain:.3, storm:.35, snow:.3, clear:.1, partly:.14}[kind] || .1) * TUNE.haze);
+  /* 下雨時雲霧壓得很低，遠山幾乎看不見：毛毛雨、一般的雨最朦朧，陣雨稍好，雷雨次之 */
+  var hazeBase = kind === 'rain' ? ({drizzle:.62, rain:.58, shower:.4}[sub] || .58) : ({fog:.55, cloudy:.25, storm:.48, snow:.3, clear:.1, partly:.14}[kind] || .1);
+  var haze = Math.min(.9, hazeBase * TUNE.haze);
   var seed = FOREST_ORDER.indexOf(myTree().forest) + 1;
   var nF = vnoise(seed*3 + 11), nM = vnoise(seed*5 + 12), nN = vnoise(seed*7 + 13);
   var rnd = (function(){ var k = seed*331; return function(){ k++; var x = Math.sin(k*78.2)*43758.5453; return x - Math.floor(x); }; })();
@@ -2268,7 +2280,7 @@ function mountMist(root, o){
 /* ── 天空的雲：用雜訊紋理（fBm＋扭曲）產生自然、不規則的雲，邊緣有厚有薄、被風吹散；
    朝上的那側亮、底部暗，看得出體積。紋理左右可以無縫接起來，整片慢慢往右捲動；
    前後兩層速度不同，交疊起來形狀會一直變 ── */
-function cloudNoise(seed){
+function cloudNoise(seed, octaves){
   var rs = seed*9301 + 49297, rnd = function(){ rs = (rs*9301 + 49297) % 233280; return rs/233280; };
   var p = []; for(var i=0; i<256; i++) p[i] = i;
   for(var j=255; j>0; j--){ var k = Math.floor(rnd()*(j + 1)), tmp = p[j]; p[j] = p[k]; p[k] = tmp; }
@@ -2284,7 +2296,7 @@ function cloudNoise(seed){
   };
   return function(x, y, period){
     var sum = 0, amp = 0.5, f = 1, norm = 0;
-    for(var o=0; o<CLOUD_STYLE.octaves; o++){ sum += amp*n(x*f, y*f, period*f); norm += amp; amp *= 0.5; f *= 2; }
+    for(var o=0, on=(octaves || CLOUD_STYLE.octaves); o<on; o++){ sum += amp*n(x*f, y*f, period*f); norm += amp; amp *= 0.5; f *= 2; }
     return sum / norm;
   };
 }
@@ -2295,7 +2307,7 @@ var CLOUD_STYLE = { octaves:3, tones:3, flat:1.6, edge:0.1, contrast:0.6 };
 /* 一片會隨時間變形的雲／霧場：雜訊場本身慢慢流動，切出來的形狀邊緣就會一點一點長出、散開。
    s：hex 顏色、cov 多寡、stretch 橫向拉長、seed、H 紋理高、tones／edge／contrast 可覆寫 CLOUD_STYLE */
 function cloudField(s){
-  var CS = CLOUD_STYLE, W = 384, H = s.H || 150, fbm = cloudNoise(s.seed);
+  var CS = CLOUD_STYLE, W = 384, H = s.H || 150, fbm = cloudNoise(s.seed, s.octaves);
   var flat = s.flat != null ? s.flat : CS.flat, tones = s.tones != null ? s.tones : CS.tones;
   var edge = s.edge != null ? s.edge : CS.edge, contrast = s.contrast != null ? s.contrast : CS.contrast;
   var P = Math.max(2, Math.round(6/(s.stretch*flat))), ys = 6*(150/W)*flat*(H/150);
@@ -2410,6 +2422,33 @@ function mountFog(root, o){
   ]);
 }
 
+/* ── 下雨天的天空：真實的雨天是一整層低而厚的灰雲（雨層雲），沒有一朵一朵、不留空隙，
+   但看得出深淺；主雲層下面飄著破碎、邊緣毛毛的低雲，離得近、飄得快，層次就在這裡。
+   sub：drizzle 毛毛雨（灰白、均勻）、rain 一般的雨、shower 陣雨（雲比較成形、偶爾露出亮的天）、storm 雷雨（雲底很暗） ── */
+var RAIN_SKY = {
+  drizzle:{ deck:'#B6C0BA', blot:'#9EA9A3', scud:'#A7B1AB', deckA:.62, blotA:.32, scudA:.42, scudN:.5 },
+  rain:   { deck:'#9AA59F', blot:'#7C8782', scud:'#88938E', deckA:.7,  blotA:.5,  scudA:.62, scudN:.46 },
+  shower: { deck:'#A3ADA8', blot:'#7F8A85', scud:'#8F9A95', deckA:.4,  blotA:.62, scudA:.6,  scudN:.48 },
+  storm:  { deck:'#5E6763', blot:'#3E4642', scud:'#4C5551', deckA:.78, blotA:.62, scudA:.7,  scudN:.44 }
+};
+function mountRainSky(root, sub, tod, night, seed){
+  var K = JSON.parse(JSON.stringify(RAIN_SKY[sub] || RAIN_SKY.rain));
+  ['deck', 'blot', 'scud'].forEach(function(k){
+    if(night) K[k] = mixHex(K[k], '#0E1A14', 0.68);              /* 晚上整片暗下來 */
+    else if(tod === '暮') K[k] = mixHex(K[k], '#8A7048', 0.18);  /* 傍晚帶一點暖 */
+  });
+  var op = TUNE.cloudOpacity;
+  /* 1. 整層灰雲：從頂端蓋到山頭上方，往下淡出，看得到遠山的輪廓若隱若現 */
+  var rgb = hexRgb255(K.deck), a = Math.min(.95, K.deckA*op);
+  root.appendChild(el('div','position:absolute;left:0;right:0;top:0;height:74%;pointer-events:none;background:linear-gradient(180deg,rgba('+rgb+','+a+') 0%,rgba('+rgb+','+(a*0.85)+') 55%,rgba('+rgb+',0) 100%)'));
+  /* 2. 雲層裡的深淺：一片片模糊的深色雲團，慢慢飄、慢慢變形
+     3. 主雲層下面的碎雲：破碎、邊緣毛，位置低、飄得快 */
+  mountField(root, [
+    { field:{ hex:K.blot, cov: sub === 'shower' ? .4 : .38, stretch:1.6, seed:seed*11 + 1, tones:1, contrast:0, edge:.28, flat:1.3 }, scale:2.6, speed:5*TUNE.cloudSpeed, alpha:Math.min(1, K.blotA*op), y0:0, y1:.58, stepSec:5 },
+    { field:{ hex:K.scud, cov:K.scudN, stretch:2.6, seed:seed*11 + 7, tones:2, contrast:.3, edge:.07, flat:2, octaves:4, H:110 }, scale:1.8, speed:18*TUNE.cloudSpeed, alpha:Math.min(1, K.scudA*op), y0:.3, y1:.6, stepSec:2.5 }
+  ]);
+}
+
 function screen7(){
   var tod = curTod(), sc = SCENES[tod], w = nowWeather(tod), night = tod === '夜';
   var root = el('div','flex:1;position:relative;overflow:hidden;background:'+sc.sky+';min-height:0');
@@ -2434,14 +2473,15 @@ function screen7(){
   /* 雲的多寡與形狀：晴天幾縷拉長的薄雲、晴時多雲零散、陰雨連成一片；晴朗的晚上不放（要看星星） */
   var cloudCov = {clear:.6, partly:.46, cloudy:.36, rain:.33, storm:.3, snow:.4, fog:.44}[w.kind] / Math.max(0.3, TUNE.cloudAmount);
   var cloudStretch = w.kind === 'clear' ? 3 : w.kind === 'partly' ? 1.5 : 1.3;
-  if(!(night && w.kind === 'clear')) mountClouds(root, { color:cloudCol, y0:.03, y1:.42, cov:cloudCov, stretch:cloudStretch,
+  if(w.kind === 'rain' || w.kind === 'storm') mountRainSky(root, w.sub || (w.kind === 'storm' ? 'storm' : 'rain'), tod, night, FOREST_ORDER.indexOf(myTree().forest) + 1);
+  else if(!(night && w.kind === 'clear')) mountClouds(root, { color:cloudCol, y0:.03, y1:.42, cov:cloudCov, stretch:cloudStretch,
                       alpha: Math.min(1, cloudA*(clouds > 0 ? 2.2 : 1.6)), speed: 9*TUNE.cloudSpeed, seed: FOREST_ORDER.indexOf(myTree().forest) + 1 });
   /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
      也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
   var TREE_X = TUNE.treeX;
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:'+(TUNE.treeBase - 6)+'%;height:40%;background:radial-gradient(60% 50% at '+TREE_X+'% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
   /* 山：遠山、稜線上的樹、雲海、主樹站的山肩（後面那層）；樹根前的土和前景（前面那層） */
-  var land = landscape(tod, w.kind, TREE_X);
+  var land = landscape(tod, w.kind, TREE_X, w.sub);
   root.appendChild(land.back);
   /* 背景樹之間、山谷裡的霧：在稜線和山肩之間流動 */
   var mistCol = night ? '#4C6357' : dim >= 0.3 ? '#C9D2CD' : '#EEF3EC';

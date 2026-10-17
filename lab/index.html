@@ -65,7 +65,7 @@
 <div id="motionNote" style="display:none;margin:0 24px 12px;padding:10px 14px;border-radius:12px;background:#FFF6DC;border:1px solid #E8D79A;color:#5A4A12;font-size:12.5px;line-height:1.6"></div>
 <div class="tabs">
   <button id="tabOne" class="on">單一畫面</button>
-  <button id="tabAll">28 種一次看</button>
+  <button id="tabAll">全部一次看</button>
 </div>
 
 <div class="wrap" id="one">
@@ -90,7 +90,7 @@
 (function(){
 "use strict";
 var TODS = [['晨','早上'],['午','中午'],['暮','傍晚'],['夜','晚上']];
-var WXS  = [[null,'真實天氣'],['clear','晴'],['partly','晴時多雲'],['cloudy','陰'],['fog','霧'],['rain','雨'],['storm','雷雨'],['snow','雪']];
+var WXS  = [[null,'真實天氣'],['clear','晴'],['partly','晴時多雲'],['cloudy','陰'],['fog','霧'],['drizzle','毛毛雨'],['rain','雨'],['shower','陣雨'],['storm','雷雨'],['snow','雪']];
 var GROUPS = [
   {g:'星空（晴朗或多雲的晚上）', items:[['starCount','星星數量',40,300,10],['starSize','星星大小',0.5,2.5,0.05],['starBright','亮度',0.3,1.6,0.05],['twinkleSpeed','閃爍速度',0,3,0.05],['twinkleDepth','閃爍幅度',0,1.6,0.05]]},
   {g:'流星（只在晴朗的晚上）', items:[['meteorEvery','平均幾秒一顆',1.5,30,0.5],['meteorSpeed','速度',0.3,2.5,0.05],['meteorLength','尾巴長度',0.3,3,0.05]]},
@@ -289,7 +289,7 @@ function buildGrid(){
 }
 function refreshGrid(){
   Array.prototype.forEach.call(document.querySelectorAll('.cell iframe'), function(f, i){
-    var td = TODS[Math.floor(i / 7)][0], w = WXS[1 + i % 7][0];
+    var nW = WXS.length - 1, td = TODS[Math.floor(i / nW)][0], w = WXS[1 + i % nW][0];
     push(f.contentWindow, td, w, false);
   });
 }
