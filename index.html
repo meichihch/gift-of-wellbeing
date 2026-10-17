@@ -23,6 +23,7 @@
   @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.04);opacity:0}54%{opacity:.5}100%{transform:translateX(-50%) scale(1.65);opacity:0}}
   @keyframes th-halo{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.6}33%,50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
   @keyframes th-sway{0%,100%{transform:rotate(-.6deg)}50%{transform:rotate(.6deg)}}
+  @keyframes th-swayv{0%,100%{transform:rotate(calc(var(--sway,0deg) * -1))}50%{transform:rotate(var(--sway,0deg))}}
   /* 樹上的名牌：跟呼吸同一個節奏輕輕放大、變亮 */
   @keyframes th-tag{0%,100%{transform:translateX(-50%) scale(.95);opacity:.7}33%,50%{transform:translateX(-50%) scale(1.04);opacity:1}}
   @keyframes th-dot{0%,100%{transform:translate(-50%,50%) scale(.8);opacity:.5}33%,50%{transform:translate(-50%,50%) scale(1.3);opacity:1}}
@@ -301,6 +302,18 @@ function quizTop3(){
 }
 
 
+/* 即時風景的動畫參數：內部調校頁（/lab/）會直接改這裡，數字都是相對於原本的倍數或實際值 */
+var TUNE = {
+  starCount:120, starSize:1, starBright:1, twinkleSpeed:1, twinkleDepth:1,
+  meteorEvery:6.5, meteorSpeed:1, meteorLength:1,
+  cloudOpacity:1, cloudSpeed:1, fog:1, fogSpeed:1, dim:1,
+  rainDensity:1, rainSpeed:1, rainSlant:0.18, snowDensity:1, snowSpeed:1, snowSway:1,
+  lightningEvery:10.5, flash:1,
+  treeX:59, treeHeight:42, treeNightOpacity:0.62, treeSway:0, swaySpeed:14, companions:1,
+  volume:1
+};
+var TUNE_DEFAULT = JSON.parse(JSON.stringify(TUNE));
+
 /* 即時風景：四個時段都留在綠色調裡，天空頂端夠暗，讓淺色字與狀態列看得清楚 */
 var SCENES = {
   '晨':{sky:'linear-gradient(180deg,#1C3A2C 0%,#4F7461 38%,#9DB8A0 68%,#C9D8C3 100%)', hillA:'#355A43', hillB:'#1B3527', fog:.45, star:0,   temp:'現在 · 14°C · 起霧',        sound:'環境音：霧滴 · 山雀（近）· 風很輕'},
@@ -496,11 +509,69 @@ function cypress(style){
   img.onerror = function(){ img.style.display = 'none'; };   /* 缺圖時安靜退場 */
   return img;
 }
-/* 完整的阿檜：原圖主幹在寬度 57% 處、右側樹枝被裁到。
-   只取主幹左邊完整的那半，鏡像拼出右半，得到一棵左右對稱、置中的樹 */
-var TREE_AXIS_PX = 181.5;
+/* 完整的樹：原圖主幹在寬度 57% 處、右側樹枝被裁到。
+   只取主幹左邊完整的那半，鏡像拼出右半，得到一棵左右對稱、置中的樹。
+   原圖線條很細，最下面幾層的樹枝也沒畫到樹幹，縮小後看起來空空的：
+   在畫布上把線條加粗一點，後面再鋪一層很淡的樹身，讓樹枝和樹幹連起來 */
+var TREE_AXIS_PX = 181.5, FULL_TREE_DATA = null, FULL_TREE_P = null;
+function fullTreeUrl(){
+  if(!FULL_TREE_P) FULL_TREE_P = treeSrc().then(function(im){
+    var W = 363, H = 790;
+    var base = document.createElement('canvas'); base.width = W; base.height = H;
+    var b = base.getContext('2d');
+    b.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790);
+    b.save(); b.translate(W, 0); b.scale(-1, 1); b.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790); b.restore();
+    /* 線條加粗：真正的膨脹，每個像素取半徑內最不透明的那個，不會越疊越亮、細節也留得住 */
+    var rad = TREE_LOOK.lineRadius, thick = base;
+    if(rad > 0){
+      var src = b.getImageData(0, 0, W, H), d = src.data, dil = b.createImageData(W, H), od = dil.data;
+      var offs = [];
+      for(var dy=-Math.ceil(rad); dy<=Math.ceil(rad); dy++) for(var dx=-Math.ceil(rad); dx<=Math.ceil(rad); dx++) if(dx*dx + dy*dy <= rad*rad + 0.5) offs.push([dx, dy]);
+      for(var y=0; y<H; y++) for(var x=0; x<W; x++){
+        var best = -1, bi = 0;
+        for(var q=0; q<offs.length; q++){
+          var xx = x + offs[q][0], yy = y + offs[q][1];
+          if(xx < 0 || yy < 0 || xx >= W || yy >= H) continue;
+          var ii = (yy*W + xx)*4;
+          if(d[ii+3] > best){ best = d[ii+3]; bi = ii; }
+        }
+        var oi = (y*W + x)*4;
+        od[oi] = d[bi]; od[oi+1] = d[bi+1]; od[oi+2] = d[bi+2]; od[oi+3] = best;
+      }
+      thick = document.createElement('canvas'); thick.width = W; thick.height = H;
+      thick.getContext('2d').putImageData(dil, 0, 0);
+    }
+    /* 樹身：線稿往四周擴開、模糊，很淡地鋪在後面，最下面幾層的樹枝才會跟樹幹連起來 */
+    var out = document.createElement('canvas'); out.width = W; out.height = H;
+    var o = out.getContext('2d');
+    if(TREE_LOOK.bodyAlpha > 0){
+      var body = document.createElement('canvas'); body.width = W; body.height = H;
+      var bd = body.getContext('2d');
+      for(var r=2; r<=TREE_LOOK.bodyReach; r+=2) for(var k=0; k<12; k++){ var an = k*Math.PI/6; bd.drawImage(base, Math.cos(an)*r, Math.sin(an)*r); }
+      o.globalAlpha = TREE_LOOK.bodyAlpha;
+      if('filter' in o) o.filter = 'blur(4px)';
+      o.drawImage(body, 0, 0);
+      if('filter' in o) o.filter = 'none';
+      o.globalAlpha = 1;
+    }
+    o.drawImage(thick, 0, 0);
+    return (FULL_TREE_DATA = out.toDataURL('image/png'));
+  });
+  return FULL_TREE_P;
+}
+/* 線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改 */
+var TREE_LOOK = { lineRadius:1, bodyReach:8, bodyAlpha:0.08 };
 function fullTree(style){
   var wrap = el('div','position:absolute;pointer-events:none;aspect-ratio:'+(TREE_AXIS_PX*2)+' / 790;' + style);
+  var putImg = function(url){
+    wrap.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = url; img.alt = '';
+    img.setAttribute('style','position:absolute;inset:0;width:100%;height:100%');
+    wrap.appendChild(img);
+  };
+  if(FULL_TREE_DATA){ putImg(FULL_TREE_DATA); return wrap; }
+  /* 還沒做好之前先用原圖兩半拼，做好就換掉；畫布不能用（例如直接開檔案）就一直用原圖 */
   for(var i=0;i<2;i++){
     var half = el('div','position:absolute;top:0;bottom:0;width:50%;overflow:hidden;' + (i ? 'right:0;transform:scaleX(-1)' : 'left:0'));
     var img = document.createElement('img');
@@ -509,6 +580,7 @@ function fullTree(style){
     img.onerror = function(){ wrap.style.display = 'none'; };
     half.appendChild(img); wrap.appendChild(half);
   }
+  fullTreeUrl().then(putImg).catch(function(){});
   return wrap;
 }
 /* 生成的山景：取代照片，沒有授權問題。kind 是天氣（clear／partly／cloudy／fog／rain／storm／snow），預設起霧 */
@@ -1105,7 +1177,7 @@ function playSound(key){
   var ctx = sndCtx(); if(!ctx || !SOUNDSCAPES[key]) return;
   var bus = ctx.createGain();
   bus.gain.setValueAtTime(0.0001, ctx.currentTime);
-  bus.gain.exponentialRampToValueAtTime(0.9, ctx.currentTime + 0.8);
+  bus.gain.exponentialRampToValueAtTime(Math.max(0.0001, 0.9*TUNE.volume), ctx.currentTime + 0.8);
   bus.connect(SND.out);
   SND.key = key; SND.bus = bus; SND.stopScene = SOUNDSCAPES[key](ctx, bus);
 }
@@ -1861,10 +1933,10 @@ function screen6(){
    星星位置只生成一次，每分鐘重畫風景時不會跳動 */
 var STARFIELD = null;
 function starfield(){
-  if(STARFIELD) return STARFIELD;
+  if(STARFIELD && STARFIELD.length === Math.round(TUNE.starCount)) return STARFIELD;
   var rnd = function(seed){ var x = Math.sin(seed*91.7)*43758.5453; return x - Math.floor(x); };
   STARFIELD = [];
-  for(var i=0;i<120;i++){
+  for(var i=0;i<Math.round(TUNE.starCount);i++){
     var r = 0.4 + Math.pow(rnd(i*7+1), 3) * 1.3;
     STARFIELD.push({
       x: rnd(i*3+2),
@@ -1892,8 +1964,8 @@ function mountSky(root, amt, meteorsOn){
     var left = Math.random() < 0.7;                       /* 多半往左下，偶爾往右下 */
     var ang = (left ? 145 + Math.random()*15 : 20 + Math.random()*15) * Math.PI/180;
     return { x0: left ? w*(0.35 + Math.random()*0.65) : w*Math.random()*0.6, y0: h*Math.random()*0.35,
-             cos: Math.cos(ang), sin: Math.sin(ang), v: 520 + Math.random()*260,
-             life: 900 + Math.random()*450, len: 90 + Math.random()*70, t0: nowT };
+             cos: Math.cos(ang), sin: Math.sin(ang), v: (520 + Math.random()*260)*TUNE.meteorSpeed,
+             life: (900 + Math.random()*450)/Math.sqrt(TUNE.meteorSpeed), len: (90 + Math.random()*70)*TUNE.meteorLength, t0: nowT };
   }
   function frame(nowT){
     if(!cv.isConnected) return;                           /* 離開畫面就停 */
@@ -1902,23 +1974,24 @@ function mountSky(root, amt, meteorsOn){
     var g = cv.getContext('2d');
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
     g.fillStyle = '#F2F6F0';
+    var dpK = TUNE.twinkleDepth, spK = TUNE.twinkleSpeed, rK = TUNE.starSize;
     stars.forEach(function(s){
-      var a = amt * (still ? s.a : s.a * (1 - s.dp*(0.5 - 0.5*Math.sin(nowT*0.001*s.sp + s.ph))));
-      var x = s.x*w, y = s.y*h;
+      var a = Math.min(1, amt * TUNE.starBright * (still ? s.a : s.a * (1 - Math.min(1, s.dp*dpK)*(0.5 - 0.5*Math.sin(nowT*0.001*s.sp*spK + s.ph)))));
+      var x = s.x*w, y = s.y*h, sr = s.r*rK;
       if(s.big){
         /* 亮星的光暈：從中心往外漸淡，不是一圈實心的圓 */
-        var halo = g.createRadialGradient(x, y, 0, x, y, s.r*4.5);
+        var halo = g.createRadialGradient(x, y, 0, x, y, sr*4.5);
         halo.addColorStop(0, 'rgba(242,246,240,'+(a*0.45)+')');
         halo.addColorStop(1, 'rgba(242,246,240,0)');
         g.globalAlpha = 1; g.fillStyle = halo;
-        g.beginPath(); g.arc(x, y, s.r*4.5, 0, 6.283); g.fill();
+        g.beginPath(); g.arc(x, y, sr*4.5, 0, 6.283); g.fill();
         g.fillStyle = '#F2F6F0';
       }
-      g.globalAlpha = a; g.beginPath(); g.arc(x, y, s.r, 0, 6.283); g.fill();
+      g.globalAlpha = a; g.beginPath(); g.arc(x, y, sr, 0, 6.283); g.fill();
     });
     if(meteorsOn && !still && nowT > nextMeteor){
       meteors.push(spawn(w, h, nowT));
-      nextMeteor = nowT + 3500 + Math.random()*6000;
+      nextMeteor = nowT + TUNE.meteorEvery*1000*(0.55 + Math.random()*0.9);   /* 平均間隔 meteorEvery 秒 */
     }
     meteors = meteors.filter(function(m){ return nowT - m.t0 < m.life; });
     meteors.forEach(function(m){
@@ -1947,12 +2020,12 @@ function mountPrecip(root, kind, heavy){
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
   var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var snow = kind === 'snow', n = snow ? 70 : Math.round(70 + 160*heavy), parts = [];
-  var last = performance.now(), flashT = -1, nextFlash = last + 2500 + Math.random()*5000;
+  var snow = kind === 'snow', n = Math.round((snow ? 70 : 70 + 160*heavy) * (snow ? TUNE.snowDensity : TUNE.rainDensity)), parts = [];
+  var last = performance.now(), flashT = -1, nextFlash = last + 2500 + Math.random()*Math.min(5000, TUNE.lightningEvery*500);
   function seed(w, h, anywhere){
     return snow
-      ? { x:Math.random()*w, y:anywhere ? Math.random()*h : -6, r:1 + Math.random()*1.6, v:25 + Math.random()*35, ph:Math.random()*6.283 }
-      : { x:Math.random()*w*1.2, y:anywhere ? Math.random()*h : -30, len:10 + Math.random()*14, v:650 + Math.random()*350 };
+      ? { x:Math.random()*w, y:anywhere ? Math.random()*h : -6, r:1 + Math.random()*1.6, v:(25 + Math.random()*35)*TUNE.snowSpeed, ph:Math.random()*6.283 }
+      : { x:Math.random()*w*(1 + TUNE.rainSlant), y:anywhere ? Math.random()*h : -30, len:10 + Math.random()*14, v:(650 + Math.random()*350)*TUNE.rainSpeed };
   }
   function frame(nowT){
     if(!cv.isConnected) return;
@@ -1965,7 +2038,7 @@ function mountPrecip(root, kind, heavy){
     if(snow){
       g.fillStyle = 'rgba(242,246,240,.8)';
       parts.forEach(function(p, i){
-        if(!still){ p.y += p.v*dt; p.x += Math.sin(nowT*0.001 + p.ph)*8*dt; }
+        if(!still){ p.y += p.v*dt; p.x += Math.sin(nowT*0.001 + p.ph)*8*TUNE.snowSway*dt; }
         if(p.y > h + 6) parts[i] = seed(w, h, false);
         g.beginPath(); g.arc(p.x, p.y, p.r, 0, 6.283); g.fill();
       });
@@ -1973,21 +2046,21 @@ function mountPrecip(root, kind, heavy){
       g.strokeStyle = 'rgba(214,230,220,'+(0.22 + 0.18*heavy)+')'; g.lineWidth = 1;
       g.beginPath();
       parts.forEach(function(p, i){
-        if(!still){ p.y += p.v*dt; p.x -= p.v*0.18*dt; }
+        if(!still){ p.y += p.v*dt; p.x -= p.v*TUNE.rainSlant*dt; }
         if(p.y > h + 20 || p.x < -20) { parts[i] = p = seed(w, h, false); }
-        g.moveTo(p.x, p.y); g.lineTo(p.x + p.len*0.18, p.y - p.len);
+        g.moveTo(p.x, p.y); g.lineTo(p.x + p.len*TUNE.rainSlant, p.y - p.len);
       });
       g.stroke();
     }
     /* 雷雨：閃一下（偶爾連閃兩下），幾秒後傳來雷聲 */
     if(kind === 'storm' && !still){
       if(nowT > nextFlash){
-        flashT = nowT; nextFlash = nowT + 6000 + Math.random()*9000;
+        flashT = nowT; nextFlash = nowT + TUNE.lightningEvery*1000*(0.57 + Math.random()*0.86);   /* 平均間隔 lightningEvery 秒 */
         if(THUNDER) setTimeout(THUNDER, 800 + Math.random()*1700);
       }
       if(flashT >= 0){
         var e = nowT - flashT, a = e < 80 ? 0.5 : e < 160 ? 0.08 : e < 240 ? 0.35 : Math.max(0, 0.35 - (e - 240)/450);
-        if(a > 0){ g.fillStyle = 'rgba(235,242,238,'+a+')'; g.fillRect(0, 0, w, h); } else flashT = -1;
+        if(a > 0){ g.fillStyle = 'rgba(235,242,238,'+Math.min(1, a*TUNE.flash)+')'; g.fillRect(0, 0, w, h); } else flashT = -1;
       }
     }
     requestAnimationFrame(frame);
@@ -2007,30 +2080,35 @@ function screen7(){
 
   /* 天氣決定：有沒有星星、天色多暗、霧多濃、有沒有雲 */
   var starAmt = night ? ({clear:1, partly:0.5}[w.kind] || 0) : 0;
-  var dim     = {cloudy:0.16, rain:0.3, storm:0.42, snow:0.12, fog:0.04}[w.kind] || 0;
-  var fogAmt  = {clear: tod === '晨' ? 0.2 : 0.06, partly:0.14, cloudy:0.22, fog:0.6, rain:0.3, storm:0.25, snow:0.3}[w.kind];
+  var dim     = Math.min(0.9, ({cloudy:0.16, rain:0.3, storm:0.42, snow:0.12, fog:0.04}[w.kind] || 0) * TUNE.dim);
+  var fogAmt  = Math.min(1, ({clear: tod === '晨' ? 0.2 : 0.06, partly:0.14, cloudy:0.22, fog:0.6, rain:0.3, storm:0.25, snow:0.3}[w.kind]) * TUNE.fog);
   var clouds  = {partly:2, cloudy:4, rain:4, storm:4, snow:3}[w.kind] || 0;
 
   if(starAmt > 0) mountSky(root, starAmt, w.kind === 'clear');
   if(dim > 0) root.appendChild(el('div','position:absolute;inset:0;background:rgba(18,26,22,'+dim+')'));
   for(var ci=0; ci<clouds; ci++){
-    var cc = night ? 'rgba(48,60,54,.55)' : (dim >= 0.3 ? 'rgba(140,152,146,.42)' : 'rgba(214,224,218,.32)');
-    root.appendChild(el('div','position:absolute;left:'+(-15 + ci*28)+'%;top:'+(10 + (ci%2)*9)+'%;width:62%;height:12%;border-radius:50%;background:'+cc+';filter:blur(22px);animation:th-drift '+(30 + ci*7)+'s ease-in-out infinite'));
+    var ca = Math.min(1, (night ? .55 : dim >= 0.3 ? .42 : .32) * TUNE.cloudOpacity);
+    var cc = night ? 'rgba(48,60,54,'+ca+')' : (dim >= 0.3 ? 'rgba(140,152,146,'+ca+')' : 'rgba(214,224,218,'+ca+')');
+    root.appendChild(el('div','position:absolute;left:'+(-15 + ci*28)+'%;top:'+(10 + (ci%2)*9)+'%;width:62%;height:12%;border-radius:50%;background:'+cc+';filter:blur(22px);animation:th-drift '+((30 + ci*7)/TUNE.cloudSpeed).toFixed(1)+'s ease-in-out infinite'));
   }
   /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
      也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
-  var TREE_X = 59;
+  var TREE_X = TUNE.treeX;
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at '+TREE_X+'% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
   root.appendChild(el('div','position:absolute;left:-20%;bottom:0;width:140%;height:44%;background:'+sc.hillA+';border-radius:50% 50% 0 0'));
   /* 阿檜旁邊的樹：散在後面的稜線上，比阿檜小很多、也淡很多；左邊空間比較大，多放一棵 */
   [[9, 33, 15], [21, 35, 19], [34, 34, 13], [77, 34, 14], [90, 33, 17]].forEach(function(p){
-    root.appendChild(cypress('left:'+p[0]+'%;bottom:'+p[1]+'%;height:'+p[2]+'%;transform:translateX(-57%);' + (night ? 'opacity:.08' : 'opacity:.3;filter:brightness(.38)')));
+    root.appendChild(cypress('left:'+p[0]+'%;bottom:'+p[1]+'%;height:'+p[2]+'%;transform:translateX(-57%);' + (night ? 'opacity:'+Math.min(1, .08*TUNE.companions) : 'opacity:'+Math.min(1, .3*TUNE.companions)+';filter:brightness(.38)')));
   });
   /* 阿檜：完整對稱、比旁邊的樹大也清楚得多 */
-  root.appendChild(fullTree('left:'+TREE_X+'%;bottom:30%;height:42%;transform:translateX(-50%);' + (night ? 'opacity:.62;filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:.95;filter:brightness(.13)')));
+  /* 樹包在一層會擺動的容器裡：擺幅 treeSway 度（0 就不動），一輪 swaySpeed 秒 */
+  var treeBox = el('div','position:absolute;left:'+TREE_X+'%;bottom:30%;height:'+TUNE.treeHeight+'%;transform:translateX(-50%)');
+  var treeSway = el('div','height:100%;transform-origin:50% 100%;--sway:'+TUNE.treeSway+'deg;' + (TUNE.treeSway > 0 ? 'animation:th-swayv '+TUNE.swaySpeed+'s ease-in-out infinite' : ''));
+  treeSway.appendChild(fullTree('position:relative;display:block;height:100%;' + (night ? 'opacity:'+TUNE.treeNightOpacity+';filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:.95;filter:brightness(.13)')));
+  treeBox.appendChild(treeSway); root.appendChild(treeBox);
   root.appendChild(el('div','position:absolute;left:-10%;bottom:-30px;width:130%;height:32%;background:'+sc.hillB+';border-radius:50% 50% 0 0'));
-  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+fogAmt+');filter:blur(20px);animation:th-drift 26s ease-in-out infinite'));
-  if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+(night ? 0.14 : 0.32)+') 100%)'));
+  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+fogAmt+');filter:blur(20px);animation:th-drift '+(26/TUNE.fogSpeed).toFixed(1)+'s ease-in-out infinite'));
+  if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+Math.min(1, (night ? 0.14 : 0.32)*TUNE.fog)+') 100%)'));
   if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'snow') mountPrecip(root, w.kind, w.heavy || 0.6);
 
   var top = el('div','position:absolute;top:calc(var(--top,58px) + 4px);left:18px;right:18px;display:flex;justify-content:space-between;align-items:center;gap:8px');
@@ -2111,6 +2189,26 @@ function setScreen(n){
   renderScreen(); renderTabs(); renderSidebar();
 }
 
+/* ── 給內部調校頁用的介面（同網域的 iframe 才拿得到）──────────
+   scene(時段, 天氣)：切到即時風景並固定時段與天氣；天氣傳 null 就用真實天氣
+   apply()：TUNE 改完之後重畫 */
+window.__TH = {
+  TUNE: TUNE, DEFAULT: TUNE_DEFAULT,
+  scene: function(tod, wx){
+    HOUR_FORCE = String({'晨':7, '午':13, '暮':17, '夜':22}[tod] != null ? {'晨':7, '午':13, '暮':17, '夜':22}[tod] : new Date().getHours());
+    WX_FORCE = wx || null;
+    if(S.screen !== 7) setScreen(7); else renderScreen();
+  },
+  LOOK: TREE_LOOK, lookKey: JSON.stringify(TREE_LOOK),
+  apply: function(){
+    STARFIELD = null;
+    if(window.__TH.lookKey !== JSON.stringify(TREE_LOOK)){ window.__TH.lookKey = JSON.stringify(TREE_LOOK); FULL_TREE_P = null; FULL_TREE_DATA = null; }
+    if(SND.bus && SND.ctx) SND.bus.gain.setTargetAtTime(Math.max(0.0001, 0.9*TUNE.volume), SND.ctx.currentTime, 0.1);
+    if(S.screen === 7) renderScreen();
+  },
+  mute: function(on){ S.sceneMuted = !!on; if(on) stopSound(); else if(S.screen === 7) renderScreen(); }
+};
+
 /* ── 啟動 ───────────────────────────────────────────────── */
 if(document.getElementById('appName')) document.getElementById('appName').textContent = APP.name;
 /* 字體：先把每個選項的字體表載進來，按鈕才能用自己的字體顯示；?font=wenkai 可以直接指定 */
@@ -2126,11 +2224,11 @@ function fitDevice(){
 }
 fitDevice(); window.addEventListener('resize', fitDevice);
 /* 預設從第一次打開開始；?screen=1 之類的網址參數可以直接跳到某個畫面 */
+if(QS.get('mute')) S.sceneMuted = true;   /* 調校頁的縮圖不要出聲 */
 (function(){ var q = QS.get('screen'); if(q !== null && q !== '' && !isNaN(+q) && BUILDERS[+q]) S.screen = +q; })();
 renderSidebar(); renderTabs(); renderScreen();
 /* 三座森林的天氣：一開始抓一次，之後每 10 分鐘更新 */
-fetchWeather();
-setInterval(fetchWeather, 10 * 60 * 1000);
+if(!QS.get('nofetch')){ fetchWeather(); setInterval(fetchWeather, 10 * 60 * 1000); }
 /* 每分鐘重算山上的時段，讓風景跟著真實時間走 */
 setInterval(function(){
   if(S.screen === 7) renderScreen();
