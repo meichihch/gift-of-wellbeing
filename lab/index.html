@@ -28,7 +28,9 @@
   .groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
   .group{border:1px solid var(--line);border-radius:16px;padding:12px 14px 6px;background:rgba(255,255,255,.35)}
   .group h3{margin:0 0 8px;font-size:13px;font-weight:500}
-  .sl{display:grid;grid-template-columns:104px 1fr 40px 74px;align-items:center;gap:8px;margin-bottom:8px}
+  .sl{display:grid;grid-template-columns:100px 1fr 62px 74px;align-items:center;gap:8px;margin-bottom:8px}
+  .num{width:100%;font:inherit;font-size:12px;font-variant-numeric:tabular-nums;text-align:right;border:1px solid var(--line);border-radius:8px;padding:3px 6px;background:rgba(255,255,255,.7);color:var(--ink)}
+  .num:focus{outline:2px solid var(--dark);outline-offset:0}
   .track{position:relative}
   .track .def{position:absolute;top:-3px;width:2px;height:6px;border-radius:1px;background:var(--ink3);transform:translateX(-1px);pointer-events:none}
   .rs{font:inherit;font-size:11px;border:1px solid var(--line);background:transparent;color:var(--ink3);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap;text-align:center}
@@ -58,7 +60,7 @@
 <body>
 <header>
   <h1>即時風景調校</h1>
-  <p>內部用。拉滑桿會馬上套到手機上；每一列右邊寫著原本的值，按一下就回去。調好之後按「複製設定」，貼給 Claude 就好。</p>
+  <p>內部用。拉滑桿會馬上套到手機上；數字也可以直接打，不受滑桿範圍限制；每一列右邊寫著原本的值，按一下就回去。調好之後按「複製設定」，貼給 Claude 就好。</p>
 </header>
 <div class="tabs">
   <button id="tabOne" class="on">單一畫面</button>
@@ -156,6 +158,13 @@ var timer = null;
 function applySoon(){ clearTimeout(timer); timer = setTimeout(function(){ push(frame.contentWindow, state.tod, state.wx, true); TH.mute(!state.sound); }, 120); }
 
 function fmt(v, step){ return step >= 1 ? String(Math.round(v)) : (+v).toFixed(step < 0.1 ? 2 : 1); }
+/* 數字可以自由打，只擋掉會讓畫面壞掉的值：不能小於這些（左右位置可以是負的）；這幾個要整數 */
+var FLOOR = { starCount:0, starSize:0, starBright:0, twinkleSpeed:0, twinkleDepth:0,
+  meteorEvery:0.2, meteorSpeed:0.05, meteorLength:0, cloudOpacity:0, cloudSpeed:0.05, fog:0, fogSpeed:0.05, dim:0,
+  rainDensity:0, rainSpeed:0.05, rainSlant:0, snowDensity:0, snowSpeed:0.05, snowSway:0,
+  lightningEvery:0.5, flash:0, treeHeight:1, treeNightOpacity:0, treeSway:0, swaySpeed:0.5, companions:0,
+  lineRadius:0, bodyAlpha:0, bodyReach:0, volume:0 };
+var INT = { starCount:true, bodyReach:true };
 function buildGroups(){
   var host = document.getElementById('groups'); host.innerHTML = '';
   GROUPS.forEach(function(G){
@@ -168,30 +177,50 @@ function buildGroups(){
       var key = it[0], store = G.look ? look : tune, def = G.look ? LOOK_DEF[key] : DEF[key];
       var row = document.createElement('div'); row.className = 'sl';
       var lab = document.createElement('label'); lab.innerHTML = '<i></i>'; lab.appendChild(document.createTextNode(it[1]));
-      var inp = document.createElement('input'); inp.type = 'range'; inp.min = it[2]; inp.max = it[3]; inp.step = it[4];
+      var val = (key in store) ? store[key] : def;   /* 真正的值，可以超出滑桿的範圍 */
+      var inp = document.createElement('input'); inp.type = 'range'; inp.step = 'any';
       /* 滑桿上方的小刻度：原本的值在哪裡 */
       var track = document.createElement('div'); track.className = 'track';
       var tick = document.createElement('span'); tick.className = 'def';
-      tick.style.left = (Math.max(0, Math.min(1, (def - it[2]) / (it[3] - it[2]))) * 100) + '%';
       tick.title = '原本 ' + fmt(def, it[4]);
       track.appendChild(tick); track.appendChild(inp);
-      var out = document.createElement('output');
+      /* 數字可以直接打：打完按 Enter 或點別的地方就套用 */
+      var num = document.createElement('input'); num.type = 'number'; num.className = 'num'; num.step = it[4];
       var rs = document.createElement('button'); rs.className = 'rs';
-      var cur = (key in store) ? store[key] : def;
-      inp.value = cur; out.textContent = fmt(cur, it[4]);
+      var lo = it[2], hi = it[3];
+      var fit = function(){
+        /* 打的數字超出範圍，滑桿就跟著放大範圍 */
+        lo = Math.min(it[2], val, def); hi = Math.max(it[3], val, def);
+        inp.min = lo; inp.max = hi;
+        tick.style.left = (((def - lo) / (hi - lo)) * 100) + '%';
+      };
       var mark = function(){
-        var ch = Math.abs(+inp.value - def) > 1e-9;
+        var ch = Math.abs(val - def) > 1e-9;
         row.classList.toggle('changed', ch);
         rs.textContent = (ch ? '↺ ' : '') + '原本 ' + fmt(def, it[4]);
         rs.title = ch ? '回到原本的 ' + fmt(def, it[4]) : '目前就是原本的值';
       };
-      inp.oninput = function(){
-        var v = +inp.value; out.textContent = fmt(v, it[4]);
+      var setVal = function(v, from){
+        if(isNaN(v)) v = val;
+        if(FLOOR[key] !== undefined && v < FLOOR[key]) v = FLOOR[key];
+        if(INT[key]) v = Math.round(v);
+        val = v;
         if(Math.abs(v - def) < 1e-9) delete store[key]; else store[key] = v;
+        fit();
+        if(from !== 'range') inp.value = v;
+        if(from !== 'num' || document.activeElement !== num) num.value = +(+v).toFixed(4);
         mark(); save(); applySoon();
       };
-      rs.onclick = function(){ if(row.classList.contains('changed')){ inp.value = def; inp.oninput(); } };
-      mark();
+      inp.oninput = function(){
+        /* 拉滑桿時照每一列的刻度取整 */
+        var st = it[4], v = Math.round(+inp.value / st) * st;
+        setVal(+v.toFixed(4), 'range');
+      };
+      num.onchange = function(){ setVal(parseFloat(num.value), 'numDone'); };
+      num.onkeydown = function(e){ if(e.key === 'Enter'){ num.blur(); } };
+      rs.onclick = function(){ if(row.classList.contains('changed')) setVal(def); };
+      fit(); inp.value = val; num.value = +(+val).toFixed(4); mark();
+      var out = num;
       row.appendChild(lab); row.appendChild(track); row.appendChild(out); row.appendChild(rs);
       box.appendChild(row);
     });
@@ -208,7 +237,7 @@ document.getElementById('copy').onclick = function(){
   GROUPS.forEach(function(G){
     G.items.forEach(function(it){
       var store = G.look ? look : tune, def = G.look ? LOOK_DEF[it[0]] : DEF[it[0]];
-      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + fmt(store[it[0]], it[4]) + '（原本 ' + fmt(def, it[4]) + '）  ' + it[0] + '=' + store[it[0]]);
+      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + (+store[it[0]].toFixed(4)) + '（原本 ' + fmt(def, it[4]) + '）  ' + it[0] + '=' + store[it[0]]);
     });
   });
   var text = lines.length ? ('即時風景調校設定\n' + lines.join('\n')) : '即時風景調校設定：沒有改動';
