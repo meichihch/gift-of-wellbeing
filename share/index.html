@@ -31,7 +31,8 @@
   /* 樹上的名牌：跟呼吸同一個節奏輕輕放大、變亮 */
   @keyframes th-tag{0%,100%{transform:translateX(-50%) scale(.95);opacity:.7}33%,50%{transform:translateX(-50%) scale(1.04);opacity:1}}
   @keyframes th-dot{0%,100%{transform:translate(-50%,50%) scale(.8);opacity:.5}33%,50%{transform:translate(-50%,50%) scale(1.3);opacity:1}}
-  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+  /* 系統開了「減少動態效果」就停掉動畫；網址加 ?motion=1（調校頁會加）可以強制打開 */
+  @media (prefers-reduced-motion: reduce){html:not([data-motion]) *{animation:none!important;transition:none!important}}
   #app input::placeholder{color:rgba(242,246,240,.42)}
   #app *{scrollbar-width:none}
   #app *::-webkit-scrollbar{display:none}
@@ -397,6 +398,10 @@ function morningText(tree){
    wx 可用：clear 晴、partly 晴時多雲、cloudy 陰、fog 起霧、rain 下雨、storm 雷雨、snow 下雪 */
 var QS = (function(){ try { return new URLSearchParams(location.search); } catch(e){ return { get:function(){ return null; } }; } })();
 var HOUR_FORCE = QS.get('hour'), WX_FORCE = QS.get('wx');
+/* 減少動態效果：尊重系統設定；?motion=1 時一律有動畫（調校頁要看動畫細節） */
+var MOTION_FORCE = QS.get('motion') === '1';
+if(MOTION_FORCE) document.documentElement.setAttribute('data-motion', '');
+function reduceMotion(){ return !MOTION_FORCE && !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
 function curHour(){ return (HOUR_FORCE !== null && HOUR_FORCE !== '' && !isNaN(+HOUR_FORCE)) ? +HOUR_FORCE : new Date().getHours(); }
 function curTod(){ var h=curHour(); return h>=5&&h<10?'晨':h>=10&&h<16?'午':h>=16&&h<19?'暮':'夜'; }
 
@@ -791,7 +796,7 @@ var BIRD_UP  = '<ellipse cx="0" cy="-3" rx="3.6" ry="1.6"/><circle cx="3.4" cy="
 var BIRD_DN  = '<ellipse cx="0" cy="-3" rx="3.6" ry="1.6"/><circle cx="3.4" cy="-3.7" r="1.4"/><path d="M-1 -2.6Q1 2.4 4 2L1.4 -3Z"/><path d="M-3 -3L-6.4 -2.2L-3 -2Z"/>';
 function mountBirds(g, perches, n, color){
   var NS = 'http://www.w3.org/2000/svg';
-  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var still = reduceMotion();
   var free = perches.map(function(_, i){ return i; }).sort(function(){ return Math.random() - 0.5; });
   var birds = [];
   for(var i=0;i<n;i++){
@@ -947,7 +952,7 @@ function mountMotes(root){
   cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
-  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var still = reduceMotion();
   var motes = [], last = performance.now();
   function spawn(w, h, anywhere){
     var spread = (Math.random() + Math.random() + Math.random()) / 3;   /* 靠近樹的地方多一點 */
@@ -2014,7 +2019,7 @@ function mountSky(root, amt, meteorsOn){
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
   var stars = starfield();
-  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var still = reduceMotion();
   var meteors = [], nextMeteor = performance.now() + 1200 + Math.random()*2500;
   function spawn(w, h, nowT){
     var left = Math.random() < 0.7;                       /* 多半往左下，偶爾往右下 */
@@ -2075,7 +2080,7 @@ function mountPrecip(root, kind, heavy){
   cv.setAttribute('style','position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none');
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
-  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var still = reduceMotion();
   var snow = kind === 'snow', n = Math.round((snow ? 70 : 70 + 160*heavy) * (snow ? TUNE.snowDensity : TUNE.rainDensity)), parts = [];
   var last = performance.now(), flashT = -1, nextFlash = last + 2500 + Math.random()*Math.min(5000, TUNE.lightningEvery*500);
   function seed(w, h, anywhere){
@@ -2234,12 +2239,12 @@ function mountMist(root, o){
   cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
-  var spr = mistSprite(o.color), still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var spr = mistSprite(o.color), still = reduceMotion();
   var blobs = null, last = performance.now(), R = function(a){ return a[0] + Math.random()*(a[1] - a[0]); };
   function make(w, h, anywhere){
     var rx = R(o.rx), ry = R(o.ry);
     return { rx:rx, ry:ry, x: anywhere ? -rx + Math.random()*(w + 2*rx) : -rx - Math.random()*60, y: h*(o.y0 + Math.random()*(o.y1 - o.y0)),
-             v: R(o.speed), a: o.alpha*(0.45 + Math.random()*0.55), w1: 0.12 + Math.random()*0.25, w2: 0.05 + Math.random()*0.12,
+             v: R(o.speed), a: o.alpha*(0.45 + Math.random()*0.55), w1: 0.25 + Math.random()*0.4, w2: 0.1 + Math.random()*0.2,   /* 濃淡約 10–25 秒一輪，伸縮再慢一點 */
              p1: Math.random()*6.283, p2: Math.random()*6.283, bob: (o.bob || 4)*(0.5 + Math.random()) };
   }
   function frame(nowT){
@@ -2286,7 +2291,7 @@ function screen7(){
   var cloudCol = night ? '#33453B' : dim >= 0.3 ? '#8C9892' : tod === '暮' ? '#D9C3A2' : '#DCE5DD';
   var cloudA = (night ? .5 : dim >= 0.3 ? .42 : .34) * TUNE.cloudOpacity;
   var cloudN = clouds > 0 ? clouds*4 + 2 : (night ? 0 : 3);
-  mountMist(root, { color:cloudCol, n:cloudN, y0:.1, y1:.4, rx:[70,150], ry:[18,38], alpha: clouds > 0 ? cloudA : cloudA*0.45, speed:[5*TUNE.cloudSpeed, 11*TUNE.cloudSpeed], bob:3 });
+  mountMist(root, { color:cloudCol, n:cloudN, y0:.1, y1:.4, rx:[70,150], ry:[18,38], alpha: clouds > 0 ? cloudA : cloudA*0.45, speed:[10*TUNE.cloudSpeed, 20*TUNE.cloudSpeed], bob:4 });
   /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
      也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
   var TREE_X = TUNE.treeX;
@@ -2297,7 +2302,7 @@ function screen7(){
   /* 背景樹之間、山谷裡的霧：在稜線和山肩之間流動 */
   var mistCol = night ? '#4C6357' : dim >= 0.3 ? '#C9D2CD' : '#EEF3EC';
   mountMist(root, { color:mistCol, n:16, y0:land.valleyY - .05, y1:land.groundY - .01, rx:[60,150], ry:[10,24],
-                    alpha: Math.min(.9, land.sea*0.55 + fogAmt*0.35), speed:[4*TUNE.fogSpeed, 9*TUNE.fogSpeed], bob:3 });
+                    alpha: Math.min(.9, land.sea*0.55 + fogAmt*0.35), speed:[9*TUNE.fogSpeed, 17*TUNE.fogSpeed], bob:4 });
   /* 阿檜：完整對稱、比旁邊的樹大也清楚得多 */
   /* 樹包在一層會擺動的容器裡：擺幅 treeSway 度（0 就不動），一輪 swaySpeed 秒 */
   /* 原圖最下面約 7% 是空白：往下移這麼多，樹根才會踩在山肩上 */
@@ -2310,7 +2315,7 @@ function screen7(){
   root.appendChild(land.front);
   /* 主樹腳邊的地面霧：最靠近，飄得最快，遠近才有層次 */
   mountMist(root, { color:mistCol, n:9, y0:land.groundY - .02, y1:land.groundY + .07, rx:[80,170], ry:[12,26],
-                    alpha: Math.min(.8, fogAmt*0.75), speed:[8*TUNE.fogSpeed, 15*TUNE.fogSpeed], bob:2 });
+                    alpha: Math.min(.8, fogAmt*0.75), speed:[15*TUNE.fogSpeed, 26*TUNE.fogSpeed], bob:3 });
   if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+Math.min(1, (night ? 0.14 : 0.32)*TUNE.fog)+') 100%)'));
   if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'snow') mountPrecip(root, w.kind, w.heavy || 0.6);
 
