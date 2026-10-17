@@ -95,6 +95,7 @@ var GROUPS = [
   {g:'星空（晴朗或多雲的晚上）', items:[['starCount','星星數量',40,300,10],['starSize','星星大小',0.5,2.5,0.05],['starBright','亮度',0.3,1.6,0.05],['twinkleSpeed','閃爍速度',0,3,0.05],['twinkleDepth','閃爍幅度',0,1.6,0.05]]},
   {g:'流星（只在晴朗的晚上）', items:[['meteorEvery','平均幾秒一顆',1.5,30,0.5],['meteorSpeed','速度',0.3,2.5,0.05],['meteorLength','尾巴長度',0.3,3,0.05]]},
   {g:'雲和霧', items:[['cloudAmount','雲的多寡',0.5,1.6,0.02],['cloudOpacity','雲的濃度',0,2.5,0.05],['cloudSpeed','雲飄的速度',0.2,4,0.05],['fog','霧的濃度',0,2.5,0.05],['fogSpeed','霧飄的速度',0.2,4,0.05],['dim','陰雨天變暗',0,2,0.05]]},
+  {g:'雲的風格', look:'cloud', items:[['octaves','細節層數',1,5,1],['tones','明暗階數（1＝不分階）',1,5,1],['flat','壓扁成雲層',0.6,3,0.05],['edge','邊緣柔和度',0.03,0.3,0.01],['contrast','明暗對比',0,1.5,0.05]]},
   {g:'雨和雪', items:[['rainDensity','雨量',0.2,3,0.05],['rainSpeed','雨落下的速度',0.3,2.5,0.05],['rainSlant','雨的斜度',0,0.6,0.01],['snowDensity','雪量',0.2,3,0.05],['snowSpeed','雪落下的速度',0.3,3,0.05],['snowSway','雪左右飄',0,4,0.1]]},
   {g:'閃電（雷雨）', items:[['lightningEvery','平均幾秒閃一次',3,30,0.5],['flash','閃光亮度',0.2,2,0.05]]},
   {g:'山', items:[['peakHeight','遠山的高度',0.3,2,0.05],['haze','遠景的霧氣',0,2.5,0.05],['cloudSea','谷裡的雲海',0,2.5,0.05],['foreTree','左下角的大樹',0,1,0.05]]},
@@ -106,15 +107,15 @@ var GROUPS = [
 
 /* 目前的選擇與設定：存在這台電腦的瀏覽器裡，重新整理不會不見 */
 var state = { tod:'夜', wx:'clear', sound:false };
-var tune = {}, look = {}, bglook = {};
+var tune = {}, look = {}, bglook = {}, cloudlook = {};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}')); }catch(e){}
-try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); }catch(e){}
-function save(){ try{ localStorage.setItem('th-lab-state', JSON.stringify(state)); localStorage.setItem('th-lab-tune', JSON.stringify(tune)); localStorage.setItem('th-lab-look', JSON.stringify(look)); localStorage.setItem('th-lab-bglook', JSON.stringify(bglook)); }catch(e){} }
+try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); cloudlook = JSON.parse(localStorage.getItem('th-lab-cloudlook') || '{}'); }catch(e){}
+function save(){ try{ localStorage.setItem('th-lab-state', JSON.stringify(state)); localStorage.setItem('th-lab-tune', JSON.stringify(tune)); localStorage.setItem('th-lab-look', JSON.stringify(look)); localStorage.setItem('th-lab-bglook', JSON.stringify(bglook)); localStorage.setItem('th-lab-cloudlook', JSON.stringify(cloudlook)); }catch(e){} }
 
-var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineRadius:0.9, bodyAlpha:0.08, bodyReach:8 }, BG_DEF = { lineRadius:4, bodyAlpha:0, bodyReach:8 };
+var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineRadius:0.9, bodyAlpha:0.08, bodyReach:8 }, BG_DEF = { lineRadius:4, bodyAlpha:0, bodyReach:8 }, CLOUD_DEF = { octaves:3, tones:3, flat:1.6, edge:0.1, contrast:0.6 };
 /* 每一組的值存在哪、原本是多少：主角線條、背景樹線條、其他動畫參數各一份 */
-function storeOf(G){ return G.look === 'main' ? look : G.look === 'bg' ? bglook : tune; }
-function defOf(G, key){ return G.look === 'main' ? LOOK_DEF[key] : G.look === 'bg' ? BG_DEF[key] : DEF[key]; }
+function storeOf(G){ return G.look === 'main' ? look : G.look === 'bg' ? bglook : G.look === 'cloud' ? cloudlook : tune; }
+function defOf(G, key){ return G.look === 'main' ? LOOK_DEF[key] : G.look === 'bg' ? BG_DEF[key] : G.look === 'cloud' ? CLOUD_DEF[key] : DEF[key]; }
 /* motion=1：就算系統開了「減少動態效果」也照樣播動畫；v=時間：每次都拿最新版，不吃瀏覽器的舊快取 */
 var BUST = Date.now();
 function src(extra){ return '../share/?screen=7&mute=1&motion=1&v=' + BUST + (extra || ''); }
@@ -125,6 +126,7 @@ function push(win, tod, wx, keepSound){
   Object.keys(th.DEFAULT).forEach(function(k){ th.TUNE[k] = (k in tune) ? tune[k] : th.DEFAULT[k]; });
   Object.keys(LOOK_DEF).forEach(function(k){ th.LOOK[k] = (k in look) ? look[k] : LOOK_DEF[k]; });
   if(th.BGLOOK) Object.keys(BG_DEF).forEach(function(k){ th.BGLOOK[k] = (k in bglook) ? bglook[k] : BG_DEF[k]; });
+  if(th.CLOUD) Object.keys(CLOUD_DEF).forEach(function(k){ th.CLOUD[k] = (k in cloudlook) ? cloudlook[k] : CLOUD_DEF[k]; });
   if(!keepSound) th.mute(true);
   th.scene(tod, wx);
   th.apply();
@@ -177,8 +179,8 @@ var FLOOR = { starCount:0, starSize:0, starBright:0, twinkleSpeed:0, twinkleDept
   meteorEvery:0.2, meteorSpeed:0.05, meteorLength:0, cloudOpacity:0, cloudSpeed:0.05, fog:0, fogSpeed:0.05, dim:0,
   rainDensity:0, rainSpeed:0.05, rainSlant:0, snowDensity:0, snowSpeed:0.05, snowSway:0,
   lightningEvery:0.5, flash:0, treeHeight:1, treeNightOpacity:0, treeSway:0, swaySpeed:0.5, companions:0,
-  lineRadius:0, bodyAlpha:0, bodyReach:0, volume:0, peakHeight:0, haze:0, cloudSea:0, foreTree:0, treeBase:5, treeDayOpacity:0, cloudAmount:0.3 };
-var INT = { starCount:true, bodyReach:true };
+  lineRadius:0, bodyAlpha:0, bodyReach:0, volume:0, peakHeight:0, haze:0, cloudSea:0, foreTree:0, treeBase:5, treeDayOpacity:0, cloudAmount:0.3, octaves:1, tones:1, flat:0.3, edge:0.02, contrast:0 };
+var INT = { starCount:true, bodyReach:true, octaves:true, tones:true };
 function buildGroups(){
   var host = document.getElementById('groups'); host.innerHTML = '';
   GROUPS.forEach(function(G){
@@ -243,7 +245,7 @@ function buildGroups(){
 }
 
 document.getElementById('reset').onclick = function(){
-  tune = {}; look = {}; bglook = {}; save(); buildGroups(); applySoon();
+  tune = {}; look = {}; bglook = {}; cloudlook = {}; save(); buildGroups(); applySoon();
   document.getElementById('msg').textContent = '已經回到原本的設定';
 };
 document.getElementById('copy').onclick = function(){
@@ -251,7 +253,7 @@ document.getElementById('copy').onclick = function(){
   GROUPS.forEach(function(G){
     G.items.forEach(function(it){
       var store = storeOf(G), def = defOf(G, it[0]);
-      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + (+store[it[0]].toFixed(4)) + '（原本 ' + fmt(def, it[4]) + '）  ' + (G.look === 'bg' ? 'BG_LOOK.' : G.look === 'main' ? 'TREE_LOOK.' : '') + it[0] + '=' + store[it[0]]);
+      if(it[0] in store) lines.push(G.g.replace(/（.*）/, '') + '／' + it[1] + '：' + (+store[it[0]].toFixed(4)) + '（原本 ' + fmt(def, it[4]) + '）  ' + (G.look === 'bg' ? 'BG_LOOK.' : G.look === 'main' ? 'TREE_LOOK.' : G.look === 'cloud' ? 'CLOUD_STYLE.' : '') + it[0] + '=' + store[it[0]]);
     });
   });
   var text = lines.length ? ('即時風景調校設定\n' + lines.join('\n')) : '即時風景調校設定：沒有改動';
