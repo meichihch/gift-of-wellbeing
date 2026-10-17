@@ -94,7 +94,7 @@ var WXS  = [[null,'真實天氣'],['clear','晴'],['partly','晴時多雲'],['cl
 var GROUPS = [
   {g:'星空（晴朗或多雲的晚上）', items:[['starCount','星星數量',40,300,10],['starSize','星星大小',0.5,2.5,0.05],['starBright','亮度',0.3,1.6,0.05],['twinkleSpeed','閃爍速度',0,3,0.05],['twinkleDepth','閃爍幅度',0,1.6,0.05]]},
   {g:'流星（只在晴朗的晚上）', items:[['meteorEvery','平均幾秒一顆',1.5,30,0.5],['meteorSpeed','速度',0.3,2.5,0.05],['meteorLength','尾巴長度',0.3,3,0.05]]},
-  {g:'雲和霧', items:[['cloudAmount','雲的多寡',0.5,1.6,0.02],['cloudOpacity','雲的濃度',0,2.5,0.05],['cloudSpeed','雲飄的速度',0.2,4,0.05],['fog','霧的濃度',0,2.5,0.05],['fogSpeed','霧飄的速度',0.2,4,0.05],['dim','陰雨天變暗',0,2,0.05]]},
+  {g:'雲和霧', items:[['morphSpeed','形狀變化速度',0,4,0.05],['cloudAmount','雲的多寡',0.5,1.6,0.02],['cloudOpacity','雲的濃度',0,2.5,0.05],['cloudSpeed','雲飄的速度',0.2,4,0.05],['fog','霧的濃度',0,2.5,0.05],['fogSpeed','霧飄的速度',0.2,4,0.05],['dim','陰雨天變暗',0,2,0.05]]},
   {g:'雲的風格', look:'cloud', items:[['octaves','細節層數',1,5,1],['tones','明暗階數（1＝不分階）',1,5,1],['flat','壓扁成雲層',0.6,3,0.05],['edge','邊緣柔和度',0.03,0.3,0.01],['contrast','明暗對比',0,1.5,0.05]]},
   {g:'雨和雪', items:[['rainDensity','雨量',0.2,3,0.05],['rainSpeed','雨落下的速度',0.3,2.5,0.05],['rainSlant','雨的斜度',0,0.6,0.01],['snowDensity','雪量',0.2,3,0.05],['snowSpeed','雪落下的速度',0.3,3,0.05],['snowSway','雪左右飄',0,4,0.1]]},
   {g:'閃電（雷雨）', items:[['lightningEvery','平均幾秒閃一次',3,30,0.5],['flash','閃光亮度',0.2,2,0.05]]},
@@ -179,7 +179,7 @@ var FLOOR = { starCount:0, starSize:0, starBright:0, twinkleSpeed:0, twinkleDept
   meteorEvery:0.2, meteorSpeed:0.05, meteorLength:0, cloudOpacity:0, cloudSpeed:0.05, fog:0, fogSpeed:0.05, dim:0,
   rainDensity:0, rainSpeed:0.05, rainSlant:0, snowDensity:0, snowSpeed:0.05, snowSway:0,
   lightningEvery:0.5, flash:0, treeHeight:1, treeNightOpacity:0, treeSway:0, swaySpeed:0.5, companions:0,
-  lineRadius:0, bodyAlpha:0, bodyReach:0, volume:0, peakHeight:0, haze:0, cloudSea:0, foreTree:0, treeBase:5, treeDayOpacity:0, cloudAmount:0.3, octaves:1, tones:1, flat:0.3, edge:0.02, contrast:0 };
+  lineRadius:0, bodyAlpha:0, bodyReach:0, volume:0, peakHeight:0, haze:0, cloudSea:0, foreTree:0, treeBase:5, treeDayOpacity:0, cloudAmount:0.3, morphSpeed:0, octaves:1, tones:1, flat:0.3, edge:0.02, contrast:0 };
 var INT = { starCount:true, bodyReach:true, octaves:true, tones:true };
 function buildGroups(){
   var host = document.getElementById('groups'); host.innerHTML = '';

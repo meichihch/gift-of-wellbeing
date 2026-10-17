@@ -311,7 +311,7 @@ var TUNE = {
   rainDensity:1, rainSpeed:1, rainSlant:0.18, snowDensity:1, snowSpeed:1, snowSway:1,
   lightningEvery:10.5, flash:1,
   treeX:59, treeHeight:42, treeNightOpacity:0.62, treeSway:0, swaySpeed:14, companions:1,
-  cloudSea:1, haze:1, peakHeight:1, foreTree:0.9, treeBase:25, treeDayOpacity:0.95, cloudAmount:1,
+  cloudSea:1, haze:1, peakHeight:1, foreTree:0.9, treeBase:25, treeDayOpacity:0.95, cloudAmount:1, morphSpeed:1,
   volume:1
 };
 var TUNE_DEFAULT = JSON.parse(JSON.stringify(TUNE));
@@ -2292,30 +2292,30 @@ var CLOUD_TEX = {};
 /* 雲的風格：細節層數少、明暗分三階、壓扁成雲層，跟平塗分層的山同一個調性；調校頁可以改 */
 var CLOUD_STYLE = { octaves:3, tones:3, flat:1.6, edge:0.1, contrast:0.6 };
 /* cov：雲的多寡（越小越多）；stretch：橫向拉長（晴天的薄雲拉很長） */
-function cloudTexture(hex, cov, stretch, seed){
-  var key = [hex, cov, stretch, seed, JSON.stringify(CLOUD_STYLE)].join('|');
-  if(CLOUD_TEX[key]) return CLOUD_TEX[key];
-  /* 畫布寬兩倍：同一張紋理左右各放一份。紋理本身左右接得起來，所以這一長條沒有接縫，畫的時候一次畫完 */
-  var W = 384, H = 150, c = document.createElement('canvas'); c.width = W*2; c.height = H;
-  var g = c.getContext('2d'), img = g.createImageData(W, H), d = img.data;
-  /* flat：橫向再拉長、縱向頻率提高，雲就變成橫向延展的雲層，不會長出高聳的一大團 */
-  var CS = CLOUD_STYLE, fbm = cloudNoise(seed), P = Math.max(2, Math.round(6/(stretch*CS.flat))), ys = 6*(H/W)*CS.flat;
-  var base = hexRgb255(hex), lite = base.map(function(v){ return v + (255 - v)*0.35*CS.contrast; }), dark = base.map(function(v){ return v*(1 - 0.28*CS.contrast); });
-  var step = function(v){                                                 /* 明暗分成幾階，階與階之間柔和過渡 */
-    if(CS.tones < 2) return v;
-    var k = CS.tones - 1, q = Math.floor(v*k), f = v*k - q, sm = Math.max(0, Math.min(1, (f - 0.42)/0.16));
+/* 一片會隨時間變形的雲／霧場：雜訊場本身慢慢流動，切出來的形狀邊緣就會一點一點長出、散開。
+   s：hex 顏色、cov 多寡、stretch 橫向拉長、seed、H 紋理高、tones／edge／contrast 可覆寫 CLOUD_STYLE */
+function cloudField(s){
+  var CS = CLOUD_STYLE, W = 384, H = s.H || 150, fbm = cloudNoise(s.seed);
+  var flat = s.flat != null ? s.flat : CS.flat, tones = s.tones != null ? s.tones : CS.tones;
+  var edge = s.edge != null ? s.edge : CS.edge, contrast = s.contrast != null ? s.contrast : CS.contrast;
+  var P = Math.max(2, Math.round(6/(s.stretch*flat))), ys = 6*(150/W)*flat*(H/150);
+  var base = hexRgb255(s.hex), lite = base.map(function(v){ return v + (255 - v)*0.35*contrast; }), dark = base.map(function(v){ return v*(1 - 0.28*contrast); });
+  var step = function(v){
+    if(tones < 2) return v;
+    var k = tones - 1, q = Math.floor(v*k), f = v*k - q, sm = Math.max(0, Math.min(1, (f - 0.42)/0.16));
     return Math.min(1, (q + sm*sm*(3 - 2*sm))/k);
   };
-  for(var y=0; y<H; y++){
-    var band = Math.pow(Math.sin(Math.PI*y/H), 1.1);                    /* 上下兩端淡出，不會切出一條邊 */
+  /* t：場的時間。扭曲和取樣位置跟著 t 慢慢移（x 方向的位移不影響左右接縫） */
+  function row(img, y, t){
+    var d = img.data, band = Math.pow(Math.sin(Math.PI*(y + 0.5)/H), 1.1), ny = y/H*ys;
     for(var x=0; x<W; x++){
-      var nx = x/W*P, ny = y/H*ys;
-      var wx = (fbm(nx + 5.2, ny + 1.3, P) - 0.5)*1.1, wy = (fbm(nx + 1.7, ny + 9.2, P) - 0.5)*0.5;   /* 輕微扭曲：自然但不凌亂 */
-      var den = fbm(nx + wx, ny + wy, P), up = fbm(nx + wx, ny + wy - 0.08, P);
-      /* 外緣在較窄的範圍內淡出（輪廓比較清楚），雲的中心再濃一點，有一點層次 */
-      var e1 = Math.max(0, Math.min(1, (den - cov)/CS.edge)), e2 = Math.max(0, Math.min(1, (den - cov - CS.edge)/(CS.edge*1.5)));
+      var nx = x/W*P;
+      var wx = (fbm(nx + 5.2 + t*0.09, ny + 1.3 + t*0.05, P) - 0.5)*1.1, wy = (fbm(nx + 1.7 - t*0.07, ny + 9.2 + t*0.04, P) - 0.5)*0.5;
+      var sy = ny + wy + t*0.035;
+      var den = fbm(nx + wx, sy, P), up = fbm(nx + wx, sy - 0.08, P);
+      var e1 = Math.max(0, Math.min(1, (den - s.cov)/edge)), e2 = Math.max(0, Math.min(1, (den - s.cov - edge)/(edge*1.5)));
       var a = (e1*e1*(3 - 2*e1)*0.82 + e2*e2*(3 - 2*e2)*0.18)*band;
-      var lt = step(Math.max(0, Math.min(1, 0.5 + (den - up)*5)));       /* 朝上那側亮、底部暗，分成幾階 */
+      var lt = contrast > 0 ? step(Math.max(0, Math.min(1, 0.5 + (den - up)*5))) : 0.5;
       var i4 = (y*W + x)*4;
       d[i4]   = dark[0] + (lite[0] - dark[0])*lt;
       d[i4+1] = dark[1] + (lite[1] - dark[1])*lt;
@@ -2323,43 +2323,80 @@ function cloudTexture(hex, cov, stretch, seed){
       d[i4+3] = a*255;
     }
   }
-  g.putImageData(img, 0, 0); g.putImageData(img, W, 0);
-  return (CLOUD_TEX[key] = c);
+  return { W: W, H: H, row: row };
 }
-/* o：color、y0／y1 雲在畫面高度的哪一段、cov 多寡、stretch 拉長、alpha、speed（px/s） */
-function mountClouds(root, o){
-  if(!(o.alpha > 0.005)) return;
+/* 一層會變形的雲：手上隨時有兩張（現在、下一刻），交叉淡入；同時在背景一列一列算再下一刻，不會卡 */
+var FIELD_INIT = {};   /* 同一組雲霧設定的頭兩張存起來，重畫畫面時不用重算 */
+function FieldLayer(field, stepSec, key){
+  var self = this, W = field.W, H = field.H;
+  var strip = function(){ var c = document.createElement('canvas'); c.width = W*2; c.height = H; return c; };
+  var put = function(c, img){ var g = c.getContext('2d'); g.putImageData(img, 0, 0); g.putImageData(img, W, 0); };
+  var full = function(t){ var img = new ImageData(W, H); for(var y=0; y<H; y++) field.row(img, y, t); return img; };
+  this.field = field; this.step = stepSec; this.t = 0;
+  this.A = strip(); this.B = strip(); this.C = strip();
+  if(!FIELD_INIT[key]) FIELD_INIT[key] = [full(0), full(1)];
+  put(this.A, FIELD_INIT[key][0]); put(this.B, FIELD_INIT[key][1]);
+  this.next = new ImageData(W, H); this.nextRow = 0; this.mix = 0;
+  this.advance = function(dt, morph){
+    if(morph <= 0) return;
+    /* 下一刻的那張：每一幀算幾列，在交叉淡入結束前算完 */
+    if(self.nextRow < H){
+      var rows = Math.max(1, Math.ceil(H*dt/(self.step/morph*0.6)));
+      for(var r=0; r<rows && self.nextRow < H; r++, self.nextRow++) field.row(self.next, self.nextRow, self.t + 2);
+      if(self.nextRow >= H) put(self.C, self.next);
+    }
+    self.mix += dt*morph/self.step;
+    if(self.mix >= 1){
+      if(self.nextRow < H){ self.mix = 1; return; }                  /* 還沒算好就先停在這一張 */
+      var old = self.A; self.A = self.B; self.B = self.C; self.C = old;
+      self.t += 1; self.mix -= 1; self.nextRow = 0;
+    }
+  };
+}
+/* 在畫布上畫幾層會變形、會飄的雲或霧。layer：field 設定、scale 紋理寬是畫面幾倍、speed px/s、alpha、y0／y1 */
+function mountField(root, layers){
+  layers = layers.filter(function(L){ return L.alpha > 0.005; });
+  if(!layers.length) return;
   var cv = document.createElement('canvas');
   cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
-  var still = reduceMotion(), seed = (o.seed || 1);
-  /* 兩層：後面那層較大、較淡、較慢；前面那層清楚、較快 */
-  var layers = [
-    { tex: cloudTexture(o.color, o.cov + 0.04, o.stretch*1.2, seed*7 + 3), scale: 2.6, speed: o.speed*0.55, alpha: o.alpha*0.6, off: Math.random()*1000, dy: -0.02 },
-    { tex: cloudTexture(o.color, o.cov, o.stretch, seed*7 + 5),           scale: 2.0, speed: o.speed,      alpha: o.alpha,     off: Math.random()*1000, dy: 0.02 }
-  ];
+  var still = reduceMotion();
+  layers.forEach(function(L){ L.fl = new FieldLayer(cloudField(L.field), L.stepSec || 3, JSON.stringify(L.field) + JSON.stringify(CLOUD_STYLE)); L.off = Math.random()*1000; });
   var last = performance.now();
   function frame(nowT){
     if(!cv.isConnected) return;
     var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
     if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-    var dt = Math.min(0.05, (nowT - last)/1000), t = nowT/1000; last = nowT;
+    var dt = Math.min(0.05, (nowT - last)/1000); last = nowT;
     var g = cv.getContext('2d');
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
-    g.imageSmoothingQuality = 'high';
-    layers.forEach(function(L, li){
-      if(!still) L.off += L.speed*dt;
-      var tw = w*L.scale, th = h*(o.y1 - o.y0), y = h*(o.y0 + L.dy);
-      var x = -((L.off % tw) + tw) % tw;
-      g.globalAlpha = Math.min(1, L.alpha*(still ? 1 : 0.85 + 0.15*Math.sin(t*0.12 + li*2)));
-      /* 一長條（兩份紋理）一次畫：x 在 (-tw, 0]，所以兩份的寬度一定蓋得滿整個畫面，沒有接縫 */
-      g.drawImage(L.tex, x, y, tw*2, th);
+    layers.forEach(function(L){
+      if(!still){ L.off += L.speed*dt; L.fl.advance(dt, TUNE.morphSpeed); }
+      var tw = w*L.scale, th = h*(L.y1 - L.y0), y = h*L.y0;
+      var x = -((L.off % tw) + tw) % tw, m = L.fl.mix;
+      /* 現在這張淡出、下一刻那張淡入：邊緣看起來在慢慢長出、散開 */
+      g.globalAlpha = Math.min(1, L.alpha*(1 - m)); g.drawImage(L.fl.A, x, y, tw*2, th);
+      g.globalAlpha = Math.min(1, L.alpha*m);       g.drawImage(L.fl.B, x, y, tw*2, th);
     });
     g.globalAlpha = 1;
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+}
+/* 天空的雲：兩層，後面那層較大、較淡、較慢；前面那層清楚、較快 */
+function mountClouds(root, o){
+  var seed = o.seed || 1;
+  mountField(root, [
+    { field:{ hex:o.color, cov:o.cov + 0.04, stretch:o.stretch*1.2, seed:seed*7 + 3 }, scale:2.6, speed:o.speed*0.55, alpha:o.alpha*0.6, y0:o.y0 - 0.02, y1:o.y1 - 0.02, stepSec:4 },
+    { field:{ hex:o.color, cov:o.cov,        stretch:o.stretch,     seed:seed*7 + 5 }, scale:2.0, speed:o.speed,      alpha:o.alpha,     y0:o.y0 + 0.02, y1:o.y1 + 0.02, stepSec:3 }
+  ]);
+}
+/* 霧：一樣會變形，只是更扁、更柔、不分明暗 */
+function mountFog(root, o){
+  mountField(root, [
+    { field:{ hex:o.color, cov:o.cov, stretch:4, seed:o.seed, H:70, flat:2.2, tones:1, edge:0.24, contrast:0 }, scale:2.4, speed:o.speed, alpha:o.alpha, y0:o.y0, y1:o.y1, stepSec:3 }
+  ]);
 }
 
 function screen7(){
@@ -2397,8 +2434,8 @@ function screen7(){
   root.appendChild(land.back);
   /* 背景樹之間、山谷裡的霧：在稜線和山肩之間流動 */
   var mistCol = night ? '#4C6357' : dim >= 0.3 ? '#C9D2CD' : '#EEF3EC';
-  mountMist(root, { color:mistCol, n:16, y0:land.valleyY - .05, y1:land.groundY - .01, rx:[60,150], ry:[10,24],
-                    alpha: Math.min(.9, land.sea*0.55 + fogAmt*0.35), speed:[9*TUNE.fogSpeed, 17*TUNE.fogSpeed], bob:4 });
+  mountFog(root, { color:mistCol, cov:.4, seed:11, y0:land.valleyY - .06, y1:land.groundY + .01,
+                   alpha: Math.min(.95, (land.sea*0.55 + fogAmt*0.35)*1.4), speed:12*TUNE.fogSpeed });
   /* 阿檜：完整對稱、比旁邊的樹大也清楚得多 */
   /* 樹包在一層會擺動的容器裡：擺幅 treeSway 度（0 就不動），一輪 swaySpeed 秒 */
   /* 原圖最下面約 7% 是空白：往下移這麼多，樹根才會踩在山肩上 */
@@ -2410,8 +2447,8 @@ function screen7(){
   treeBox.appendChild(treeSway); root.appendChild(treeBox);
   root.appendChild(land.front);
   /* 主樹腳邊的地面霧：最靠近，飄得最快，遠近才有層次 */
-  mountMist(root, { color:mistCol, n:9, y0:land.groundY - .02, y1:land.groundY + .07, rx:[80,170], ry:[12,26],
-                    alpha: Math.min(.8, fogAmt*0.75), speed:[15*TUNE.fogSpeed, 26*TUNE.fogSpeed], bob:3 });
+  mountFog(root, { color:mistCol, cov:.42, seed:23, y0:land.groundY - .03, y1:land.groundY + .08,
+                   alpha: Math.min(.9, fogAmt*1.1), speed:20*TUNE.fogSpeed });
   if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+Math.min(1, (night ? 0.14 : 0.32)*TUNE.fog)+') 100%)'));
   if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'snow') mountPrecip(root, w.kind, w.heavy || 0.6);
 
