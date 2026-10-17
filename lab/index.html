@@ -28,7 +28,14 @@
   .groups{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-top:14px}
   .group{border:1px solid var(--line);border-radius:16px;padding:12px 14px 6px;background:rgba(255,255,255,.35)}
   .group h3{margin:0 0 8px;font-size:13px;font-weight:500}
-  .sl{display:grid;grid-template-columns:110px 1fr 46px;align-items:center;gap:8px;margin-bottom:8px}
+  .sl{display:grid;grid-template-columns:104px 1fr 40px 74px;align-items:center;gap:8px;margin-bottom:8px}
+  .track{position:relative}
+  .track .def{position:absolute;top:-3px;width:2px;height:6px;border-radius:1px;background:var(--ink3);transform:translateX(-1px);pointer-events:none}
+  .rs{font:inherit;font-size:11px;border:1px solid var(--line);background:transparent;color:var(--ink3);border-radius:999px;padding:3px 8px;cursor:pointer;white-space:nowrap;text-align:center}
+  .sl.changed .rs{color:var(--ink);border-color:var(--dark)}
+  .sl:not(.changed) .rs{cursor:default}
+  .group h3{display:flex;justify-content:space-between;align-items:center}
+  .group h3 button{font:inherit;font-size:11px;font-weight:400;border:1px solid var(--line);background:transparent;color:var(--ink2);border-radius:999px;padding:3px 9px;cursor:pointer}
   .sl label{color:var(--ink2);font-size:12px;display:flex;align-items:center;gap:5px}
   .sl label i{width:6px;height:6px;border-radius:50%;background:var(--lime);display:none}
   .sl.changed label i{display:inline-block}
@@ -51,7 +58,7 @@
 <body>
 <header>
   <h1>即時風景調校</h1>
-  <p>內部用。拉滑桿會馬上套到手機上；調好之後按「複製設定」，貼給 Claude 就好。</p>
+  <p>內部用。拉滑桿會馬上套到手機上；每一列右邊寫著原本的值，按一下就回去。調好之後按「複製設定」，貼給 Claude 就好。</p>
 </header>
 <div class="tabs">
   <button id="tabOne" class="on">單一畫面</button>
@@ -67,7 +74,7 @@
     <div class="groups" id="groups"></div>
     <div class="actions">
       <button class="btn primary" id="copy">複製設定</button>
-      <button class="btn" id="reset">全部重設</button>
+      <button class="btn" id="reset">全部回到原本</button>
       <span class="note" id="msg"></span>
     </div>
     <textarea id="out" readonly></textarea>
@@ -153,26 +160,39 @@ function buildGroups(){
   var host = document.getElementById('groups'); host.innerHTML = '';
   GROUPS.forEach(function(G){
     var box = document.createElement('div'); box.className = 'group';
-    var h = document.createElement('h3'); h.textContent = G.g; box.appendChild(h);
+    var h = document.createElement('h3'); h.appendChild(document.createTextNode(G.g));
+    var gr = document.createElement('button'); gr.textContent = '重設這組';
+    gr.onclick = function(){ G.items.forEach(function(it){ delete (G.look ? look : tune)[it[0]]; }); save(); buildGroups(); applySoon(); };
+    h.appendChild(gr); box.appendChild(h);
     G.items.forEach(function(it){
       var key = it[0], store = G.look ? look : tune, def = G.look ? LOOK_DEF[key] : DEF[key];
       var row = document.createElement('div'); row.className = 'sl';
       var lab = document.createElement('label'); lab.innerHTML = '<i></i>'; lab.appendChild(document.createTextNode(it[1]));
       var inp = document.createElement('input'); inp.type = 'range'; inp.min = it[2]; inp.max = it[3]; inp.step = it[4];
+      /* 滑桿上方的小刻度：原本的值在哪裡 */
+      var track = document.createElement('div'); track.className = 'track';
+      var tick = document.createElement('span'); tick.className = 'def';
+      tick.style.left = (Math.max(0, Math.min(1, (def - it[2]) / (it[3] - it[2]))) * 100) + '%';
+      tick.title = '原本 ' + fmt(def, it[4]);
+      track.appendChild(tick); track.appendChild(inp);
       var out = document.createElement('output');
+      var rs = document.createElement('button'); rs.className = 'rs';
       var cur = (key in store) ? store[key] : def;
       inp.value = cur; out.textContent = fmt(cur, it[4]);
-      var mark = function(){ row.classList.toggle('changed', Math.abs(+inp.value - def) > 1e-9); };
-      mark();
+      var mark = function(){
+        var ch = Math.abs(+inp.value - def) > 1e-9;
+        row.classList.toggle('changed', ch);
+        rs.textContent = (ch ? '↺ ' : '') + '原本 ' + fmt(def, it[4]);
+        rs.title = ch ? '回到原本的 ' + fmt(def, it[4]) : '目前就是原本的值';
+      };
       inp.oninput = function(){
         var v = +inp.value; out.textContent = fmt(v, it[4]);
         if(Math.abs(v - def) < 1e-9) delete store[key]; else store[key] = v;
         mark(); save(); applySoon();
       };
-      /* 點兩下數值，單獨回到原本的設定 */
-      out.title = '點兩下回到原本的 ' + fmt(def, it[4]);
-      out.ondblclick = function(){ inp.value = def; inp.oninput(); };
-      row.appendChild(lab); row.appendChild(inp); row.appendChild(out);
+      rs.onclick = function(){ if(row.classList.contains('changed')){ inp.value = def; inp.oninput(); } };
+      mark();
+      row.appendChild(lab); row.appendChild(track); row.appendChild(out); row.appendChild(rs);
       box.appendChild(row);
     });
     host.appendChild(box);
