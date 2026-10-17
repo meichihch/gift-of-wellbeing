@@ -314,7 +314,7 @@ var TUNE = {
   rainDensity:1, rainSpeed:1, rainSlant:0.18, snowDensity:1, snowSpeed:1, snowSway:1,
   lightningEvery:10.5, flash:1,
   treeX:59, treeHeight:42, treeNightOpacity:0.62, treeSway:0, swaySpeed:14, companions:1,
-  cloudSea:1, haze:1, peakHeight:1, foreTree:0.9,
+  cloudSea:1, haze:1, peakHeight:1, foreTree:0.9, treeBase:25, treeDayOpacity:0.95,
   volume:1
 };
 var TUNE_DEFAULT = JSON.parse(JSON.stringify(TUNE));
@@ -518,7 +518,7 @@ function cypress(style){
    只取主幹左邊完整的那半，鏡像拼出右半，得到一棵左右對稱、置中的樹。
    原圖線條很細，最下面幾層的樹枝也沒畫到樹幹，縮小後看起來空空的：
    在畫布上把線條加粗一點，後面再鋪一層很淡的樹身，讓樹枝和樹幹連起來 */
-var TREE_AXIS_PX = 181.5, FULL_TREE_DATA = null, FULL_TREE_P = null;
+var TREE_AXIS_PX = 181.5, FULL_CACHE = {}, FULL_DATA = {};   /* 依「顏色＋主角線條設定」各做一張、存起來 */
 /* 畫布轉成圖片網址：用 blob 網址，不用很長的 data: 文字，網頁比較輕 */
 function canvasUrl(cv){
   return new Promise(function(ok){
@@ -526,8 +526,10 @@ function canvasUrl(cv){
     else ok(cv.toDataURL('image/png'));
   });
 }
-function fullTreeUrl(){
-  if(!FULL_TREE_P) FULL_TREE_P = treeSrc().then(function(im){
+/* tint：把整棵樹染成指定顏色（白天的主角用跟風景同一組的深綠）；沒給就是原本的淺色線稿 */
+function fullTreeUrl(tint){
+  var key = (tint || '') + JSON.stringify(TREE_LOOK);
+  if(!FULL_CACHE[key]) FULL_CACHE[key] = treeSrc().then(function(im){
     var W = 363, H = 790;
     var base = document.createElement('canvas'); base.width = W; base.height = H;
     var b = base.getContext('2d');
@@ -567,13 +569,14 @@ function fullTreeUrl(){
       o.globalAlpha = 1;
     }
     o.drawImage(thick, 0, 0);
-    return canvasUrl(out).then(function(u){ return (FULL_TREE_DATA = u); });
+    if(tint){ o.globalCompositeOperation = 'source-in'; o.fillStyle = tint; o.fillRect(0, 0, W, H); o.globalCompositeOperation = 'source-over'; }
+    return canvasUrl(out).then(function(u){ return (FULL_DATA[key] = u); });
   });
-  return FULL_TREE_P;
+  return FULL_CACHE[key];
 }
 /* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
 var TREE_LOOK = { lineRadius:1, bodyReach:8, bodyAlpha:0.08 };
-function fullTree(style){
+function fullTree(style, tint){
   var wrap = el('div','position:absolute;pointer-events:none;aspect-ratio:'+(TREE_AXIS_PX*2)+' / 790;' + style);
   var putImg = function(url){
     wrap.innerHTML = '';
@@ -582,9 +585,10 @@ function fullTree(style){
     img.setAttribute('style','position:absolute;inset:0;width:100%;height:100%');
     wrap.appendChild(img);
   };
-  if(FULL_TREE_DATA){ putImg(FULL_TREE_DATA); return wrap; }
-  /* 還沒做好之前先用原圖兩半拼，做好就換掉；畫布不能用（例如直接開檔案）就一直用原圖 */
-  for(var i=0;i<2;i++){
+  var ready = FULL_DATA[(tint || '') + JSON.stringify(TREE_LOOK)];
+  if(ready){ putImg(ready); return wrap; }
+  /* 還沒做好之前先用原圖兩半拼（要染色的就先空著，免得閃一下白色），做好就換掉；畫布不能用（例如直接開檔案）就一直用原圖 */
+  for(var i=0; i<2 && !tint; i++){
     var half = el('div','position:absolute;top:0;bottom:0;width:50%;overflow:hidden;' + (i ? 'right:0;transform:scaleX(-1)' : 'left:0'));
     var img = document.createElement('img');
     img.src = 'assets/cypress-line.png'; img.alt = '';
@@ -592,7 +596,7 @@ function fullTree(style){
     img.onerror = function(){ wrap.style.display = 'none'; };
     half.appendChild(img); wrap.appendChild(half);
   }
-  fullTreeUrl().then(putImg).catch(function(){});
+  fullTreeUrl(tint).then(putImg).catch(function(){});
   return wrap;
 }
 /* 生成的山景：取代照片，沒有授權問題。kind 是天氣（clear／partly／cloudy／fog／rain／storm／snow），預設起霧 */
@@ -2119,6 +2123,8 @@ var LAND_PAL = {
   '夜':{far:'#1E3328', mid:'#152A1E', conifer:'#11231A', near:'#0D1D14', fore:'#08130D', haze:'#5E7A6C'}
 };
 var LAND_UID = 0;
+/* 白天主樹的顏色：比山肩深一階，同一個色相 */
+var HERO_TINT = {'晨':'#18301F', '午':'#122B1B', '暮':'#1C2216'};
 function landscape(tod, kind, treeX){
   var P = JSON.parse(JSON.stringify(LAND_PAL[tod])), night = tod === '夜', uid = 'ls' + (++LAND_UID);
   if(kind === 'snow'){ P.near = night ? '#3B4A43' : '#B9C4BF'; P.fore = night ? '#2A3631' : '#9AA8A1'; P.far = night ? '#3A4A44' : '#D4DDD9'; }
@@ -2127,13 +2133,14 @@ function landscape(tod, kind, treeX){
   var seed = FOREST_ORDER.indexOf(myTree().forest) + 1;
   var nF = vnoise(seed*3 + 11), nM = vnoise(seed*5 + 12), nN = vnoise(seed*7 + 13);
   var rnd = (function(){ var k = seed*331; return function(){ k++; var x = Math.sin(k*78.2)*43758.5453; return x - Math.floor(x); }; })();
-  var PK = TUNE.peakHeight, AX = treeX/100*400, AY = 609;   /* 山肩頂點＝主樹站的地方（離底部 30%） */
+  var PK = TUNE.peakHeight, AX = treeX/100*400, AY = 870*(1 - TUNE.treeBase/100);   /* 山肩頂點＝主樹站的地方（離底部 treeBase%） */
+  var DY = AY - 609;   /* 樹往下移多少，中景和雲海也跟著下來一半，比例才不會跑掉 */
   var farY  = function(x){ return 548 - 150*PK*(nF(x/70)*0.6 + nF(x/23 + 40)*0.28 + nF(x/8 + 90)*0.12); };
-  var midY  = function(x){ return 588 - 46*PK*(nM(x/80)*0.7 + nM(x/26 + 30)*0.3); };
+  var midY  = function(x){ return 588 + DY*0.5 - 46*PK*(nM(x/80)*0.7 + nM(x/26 + 30)*0.3); };
   var nearY = function(x){
     var d = x - AX, ad = Math.abs(d);
     /* 左邊坡長、右邊坡短，不對稱；用平滑的絕對值，山肩頂端是圓的，也不會有接縫 */
-    var base = AY + (d < 0 ? 0.36 : 0.22) * (Math.sqrt(d*d + 30*30) - 30);
+    var base = AY + (d < 0 ? 0.36 : 0.22) * (Math.sqrt(d*d + 60*60) - 60);   /* 頂端寬一點、平一點，樹根才站得住 */
     return base + 6*(nN(x/40) - 0.5) * Math.min(1, ad/40);                 /* 稜線有點起伏，主樹腳下保持平 */
   };
   var foreY = function(x){ return 812 - 26*Math.max(0, 1 - Math.pow((x - 70)/190, 2)) - 8*nN(x/30 + 70); };
@@ -2156,7 +2163,7 @@ function landscape(tod, kind, treeX){
   /* 谷裡的雲海：慢慢飄 */
   if(sea > 0.05){
     svg += '<g opacity="'+sea.toFixed(2)+'" filter="url(#'+uid+'b)"><g>'
-      + '<ellipse cx="80" cy="606" rx="150" ry="16" fill="#F2F6F0"/><ellipse cx="300" cy="598" rx="170" ry="14" fill="#F2F6F0"/><ellipse cx="190" cy="618" rx="220" ry="12" fill="#F2F6F0"/>'
+      + '<g transform="translate(0 '+(DY*0.6).toFixed(1)+')"><ellipse cx="80" cy="606" rx="150" ry="16" fill="#F2F6F0"/><ellipse cx="300" cy="598" rx="170" ry="14" fill="#F2F6F0"/><ellipse cx="190" cy="618" rx="220" ry="12" fill="#F2F6F0"/></g>'
       + '<animateTransform attributeName="transform" type="translate" values="-18 0;18 0;-18 0" dur="'+(34/TUNE.fogSpeed).toFixed(1)+'s" repeatCount="indefinite"/></g></g>';
   }
   /* 主樹站的山肩：從左下爬到主樹，右邊再緩緩下去 */
@@ -2166,6 +2173,19 @@ function landscape(tod, kind, treeX){
   [[0.12, 70], [0.24, 92], [0.38, 64]].forEach(function(b){ var bx = b[0]*400; svg += buddy(bx, nearY(bx) + 4, b[1], P.conifer, night ? .7 : .85); });
   [[AX + 70, 78], [AX + 110, 58]].forEach(function(b){ if(b[0] < 410) svg += buddy(b[0], nearY(b[0]) + 4, b[1], P.conifer, night ? .7 : .85); });
   /* 前景：深色土坡、草，左下角一棵被畫面切到的大樹 */
+  svg += '</svg>';
+  var backSvg = svg;
+  /* ── 前面那一層：畫在主樹前面，把樹根壓進土裡，再接前景 ── */
+  var front = '<svg viewBox="0 0 400 870" preserveAspectRatio="none" style="position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none" aria-hidden="true">';
+  front += '<path d="'+path(function(x){ return nearY(x) + 5; }, 4)+'" fill="'+P.near+'"/>';
+  /* 樹腳邊的草：比山坡深一點，蓋住樹根和山坡的接縫 */
+  var tuft = '';
+  for(var tx=AX-46; tx<=AX+46; tx += 3 + rnd()*4){
+    var ty = nearY(tx) + 5.5, tth = 4 + rnd()*5;
+    tuft += 'M'+tx.toFixed(1)+' '+ty.toFixed(1)+'q-1.5 -'+(tth*0.6).toFixed(1)+' -3 -'+tth.toFixed(1)+'M'+tx.toFixed(1)+' '+ty.toFixed(1)+'q1.5 -'+(tth*0.5).toFixed(1)+' 3.5 -'+(tth*0.9).toFixed(1);
+  }
+  front += '<path d="'+tuft+'" fill="none" stroke="'+P.fore+'" stroke-opacity=".75" stroke-width="1.1" stroke-linecap="round"/>';
+  svg = front;
   svg += '<path d="'+path(foreY, 6)+'" fill="'+P.fore+'"/>';
   var grass = '';
   for(var gx=0; gx<240; gx += 6 + rnd()*9){
@@ -2177,12 +2197,15 @@ function landscape(tod, kind, treeX){
   svg += '<path d="'+grass+'" fill="none" stroke="'+P.fore+'" stroke-width="1.4" stroke-linecap="round"/>';
   if(TUNE.foreTree > 0) svg += buddy(-14, 880, 330, P.fore, TUNE.foreTree / Math.max(0.01, TUNE.companions));
   svg += '</svg>';
-  var holder = el('div','position:absolute;inset:0');
-  holder.innerHTML = svg;
-  Array.prototype.forEach.call(holder.querySelectorAll('image[data-tint]'), function(im){
-    tintedTree(im.getAttribute('data-tint')).then(function(url){ im.setAttribute('href', url); }).catch(function(){});
-  });
-  return holder;
+  var mk = function(str){
+    var h = el('div','position:absolute;inset:0');
+    h.innerHTML = str;
+    Array.prototype.forEach.call(h.querySelectorAll('image[data-tint]'), function(im){
+      tintedTree(im.getAttribute('data-tint')).then(function(url){ im.setAttribute('href', url); }).catch(function(){});
+    });
+    return h;
+  };
+  return { back: mk(backSvg), front: mk(svg) };
 }
 
 function screen7(){
@@ -2211,16 +2234,20 @@ function screen7(){
   /* 構圖：阿檜稍微偏右（59%），像隨手拍下的風景而不是置中的紀念照；
      也跟靠左的標題與聲音按鈕取得平衡。背後的光暈跟著阿檜 */
   var TREE_X = TUNE.treeX;
-  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:24%;height:40%;background:radial-gradient(60% 50% at '+TREE_X+'% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
-  /* 山：遠山、稜線上的樹、雲海、主樹站的山肩、前景（取代原本兩個半圓） */
-  root.appendChild(landscape(tod, w.kind, TREE_X));
+  root.appendChild(el('div','position:absolute;left:0;right:0;bottom:'+(TUNE.treeBase - 6)+'%;height:40%;background:radial-gradient(60% 50% at '+TREE_X+'% 70%,rgba(123,227,111,.10) 0%,rgba(123,227,111,0) 70%)'));
+  /* 山：遠山、稜線上的樹、雲海、主樹站的山肩（後面那層）；樹根前的土和前景（前面那層） */
+  var land = landscape(tod, w.kind, TREE_X);
+  root.appendChild(land.back);
   /* 阿檜：完整對稱、比旁邊的樹大也清楚得多 */
   /* 樹包在一層會擺動的容器裡：擺幅 treeSway 度（0 就不動），一輪 swaySpeed 秒 */
   /* 原圖最下面約 7% 是空白：往下移這麼多，樹根才會踩在山肩上 */
-  var treeBox = el('div','position:absolute;left:'+TREE_X+'%;bottom:'+(30 - TUNE.treeHeight*0.075).toFixed(2)+'%;height:'+TUNE.treeHeight+'%;transform:translateX(-50%)');
+  var treeBox = el('div','position:absolute;left:'+TREE_X+'%;bottom:'+(TUNE.treeBase - TUNE.treeHeight*0.075).toFixed(2)+'%;height:'+TUNE.treeHeight+'%;transform:translateX(-50%)');
   var treeSway = el('div','height:100%;transform-origin:50% 100%;--sway:'+TUNE.treeSway+'deg;' + (TUNE.treeSway > 0 ? 'animation:th-swayv '+TUNE.swaySpeed+'s ease-in-out infinite' : ''));
-  treeSway.appendChild(fullTree('position:relative;display:block;height:100%;' + (night ? 'opacity:'+TUNE.treeNightOpacity+';filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:.95;filter:brightness(.13)')));
+  /* 白天的主樹染成跟風景同一組的深綠（以前是把白線稿壓暗，偏藍灰、跟山不搭）；晚上維持發光的淺色線稿 */
+  var heroTint = w.kind === 'snow' ? '#22302A' : HERO_TINT[tod];
+  treeSway.appendChild(fullTree('position:relative;display:block;height:100%;' + (night ? 'opacity:'+TUNE.treeNightOpacity+';filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:'+TUNE.treeDayOpacity), night ? null : heroTint));
   treeBox.appendChild(treeSway); root.appendChild(treeBox);
+  root.appendChild(land.front);
   root.appendChild(el('div','position:absolute;left:0;right:0;bottom:22%;height:26%;background:rgba(236,243,233,'+fogAmt+');filter:blur(20px);animation:th-drift '+(26/TUNE.fogSpeed).toFixed(1)+'s ease-in-out infinite'));
   if(w.kind === 'fog') root.appendChild(el('div','position:absolute;inset:0;background:linear-gradient(180deg,rgba(200,212,204,0) 20%,rgba(200,212,204,'+Math.min(1, (night ? 0.14 : 0.32)*TUNE.fog)+') 100%)'));
   if(w.kind === 'rain' || w.kind === 'storm' || w.kind === 'snow') mountPrecip(root, w.kind, w.heavy || 0.6);
@@ -2316,7 +2343,6 @@ window.__TH = {
   LOOK: TREE_LOOK, BGLOOK: BG_LOOK, lookKey: JSON.stringify(TREE_LOOK),
   apply: function(){
     STARFIELD = null;
-    if(window.__TH.lookKey !== JSON.stringify(TREE_LOOK)){ window.__TH.lookKey = JSON.stringify(TREE_LOOK); FULL_TREE_P = null; FULL_TREE_DATA = null; }
     if(SND.bus && SND.ctx) SND.bus.gain.setTargetAtTime(Math.max(0.0001, 0.9*TUNE.volume), SND.ctx.currentTime, 0.1);
     if(S.screen === 7) renderScreen();
   },
