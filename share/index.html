@@ -817,7 +817,7 @@ function miniScene(h, tags, kind, seed){
   }
   /* 主樹 */
   var TX = 300, TB = nearY(TX) + 4, TH = 132, TS = TH/790;
-  svg += tree(TX, TB, TH, P0.tree, 1).replace('<image ', '<image data-main ');
+  svg += tree(TX, TB, TH, P0.tree, 1);
   /* 樹根前面再蓋一層同色的坡和幾叢草，把樹根壓進土裡（坡是斜的，下坡那側的根才不會懸空） */
   svg += '<path d="'+line(function(x){ return nearY(x) + 3; }, 6)+'" fill="'+P0.near+'"/>';
   var tuft = '';
@@ -849,7 +849,7 @@ function miniScene(h, tags, kind, seed){
      鳥停在枝尖，身體一半在天空前面才看得到 */
   var perches = [];
   [[208, 98], [298, 118], [388, 156], [478, 152], [568, 118]].forEach(function(tip){
-    [-1, 1].forEach(function(side){ perches.push({ tip:tip, side:side, x: TX + side*tip[1]*0.98*TS, y: TB - TH + TH*SINK + (tip[0] - 4)*TS }); });
+    [-1, 1].forEach(function(side){ perches.push({ x: TX + side*tip[1]*0.98*TS, y: TB - TH + TH*SINK + (tip[0] - 4)*TS }); });
   });
   var nb = P0.birds[0] + Math.floor(Math.random()*(P0.birds[1] - P0.birds[0] + 1));
   if(h < 140) nb = Math.min(nb, 1);
@@ -860,28 +860,19 @@ function miniScene(h, tags, kind, seed){
   if(kind === 'rain' || kind === 'storm') mountPrecip(s, 'rain', kind === 'storm' ? 1 : 0.6);
   if(kind === 'snow') mountPrecip(s, 'snow', 0.6);
   if(tags && tags.length){
-    var row = el('div','position:absolute;top:12px;left:12px;right:12px;display:flex;flex-wrap:wrap;gap:6px');
+    /* 標籤只放左邊，右邊留給主樹，放不下就換行 */
+    var row = el('div','position:absolute;top:12px;left:12px;right:32%;display:flex;flex-wrap:wrap;gap:6px');
     tags.forEach(function(tx){ row.appendChild(el('span', TAG_ON_IMG, tx)); });
     s.appendChild(row);
   }
-  /* 場景是以寬度填滿、貼齊底部，卡片越扁上面被切掉越多；上面還壓著標籤。
-     放進畫面後量實際大小，讓主樹樹尖在看得到的地方、也不碰到標籤 */
-  var mainIm = holder.querySelector('image[data-main]'), svgEl = holder.querySelector('svg');
+  /* 場景是以寬度填滿，卡片越扁上面被切掉越多。放進畫面後量實際大小：
+     主樹維持原本大小，把看得到的範圍往上移（等於整個畫面往下移，下面前景最多裁到 172），讓樹尖離卡片上緣至少 20px */
+  var svgEl = holder.querySelector('svg');
   var fitMain = function(){
-    var w = s.clientWidth; if(!w || !mainIm) return;
-    var k = Math.max(w/400, h/200), vh = h/k, needPx = 8;
-    var cx = (TX - 200)*k + w/2;   /* 主樹中心在卡片上的 x（px） */
-    if(row) Array.prototype.forEach.call(row.children, function(c){
-      if(c.offsetLeft + c.offsetWidth > cx - 26*k && c.offsetLeft < cx + 26*k) needPx = Math.max(needPx, row.offsetTop + c.offsetTop + c.offsetHeight + 6);
-    });
-    /* 先把看得到的範圍往上移（下面前景最多裁到 178），還不夠再把主樹縮一點 */
-    var top0 = TB - TH*(1 - SINK), y0 = Math.min(200 - vh, top0 - needPx/k);
-    y0 = Math.max(y0, 178 - vh);
-    var th = Math.max(80, Math.min(TH, (TB - (y0 + needPx/k))/(1 - SINK))), ts = th/790, tw = th*363/790;
+    var w = s.clientWidth; if(!w) return;
+    var k = Math.max(w/400, h/200), vh = h/k;
+    var top0 = TB - TH*(1 - SINK), y0 = Math.max(172 - vh, Math.min(200 - vh, top0 - 20/k));
     svgEl.setAttribute('viewBox', '0 ' + y0.toFixed(1) + ' 400 200');
-    mainIm.setAttribute('height', th.toFixed(1)); mainIm.setAttribute('width', tw.toFixed(1));
-    mainIm.setAttribute('x', (TX - tw/2).toFixed(1)); mainIm.setAttribute('y', (TB - th + th*SINK).toFixed(1));
-    perches.forEach(function(p){ p.x = TX + p.side*p.tip[1]*0.98*ts; p.y = TB - th + th*SINK + (p.tip[0] - 4)*ts; });
   };
   requestAnimationFrame(function(){ fitMain(); addBirds(); });   /* 鳥等樹縮好再放，才會停在枝頭上 */
   if(window.ResizeObserver) new ResizeObserver(fitMain).observe(s);
