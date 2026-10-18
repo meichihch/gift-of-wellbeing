@@ -21,6 +21,7 @@
   @keyframes th-dots{0%,100%{opacity:.2}50%{opacity:.95}}
   @keyframes th-draw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
   @keyframes th-breathe{0%,100%{transform:scale(1) rotate(0deg)}50%{transform:scale(1.035) rotate(1.2deg)}}
+  @keyframes th-rings{0%,100%{transform:scale(.96) rotate(-.4deg)}33%,50%{transform:scale(1.04) rotate(.4deg)}}
   @keyframes th-glow{0%,100%{opacity:.7}50%{opacity:1}}
   /* 地上的光圈跟呼吸練習同一個節奏：吸氣 4 秒、停 2 秒、吐氣 6 秒，一輪 12 秒 */
   @keyframes th-ring{0%,100%{transform:translateX(-50%) scale(.9);opacity:.55}33%,50%{transform:translateX(-50%) scale(1.08);opacity:1}}
@@ -1964,10 +1965,12 @@ function screen6(){
   root.appendChild(hero('年輪', '說心事、做練習，年輪一圈圈長。長夠了，就種下一棵真的樹。'));
 
   var stage = ringStage(), r = rings();
-  var holder = glowStage(250);
-  holder.style.marginTop = '10px';
-  var center = el('div','position:absolute;left:50%;top:44%;transform:translate(-50%,-50%)');
-  var breathe = el('div','animation:th-breathe 9s ease-in-out 3s infinite');
+  /* 年輪是從上往下看的樹幹切面：不放地上的光圈，只留背後的光暈。
+     年輪和光暈跟全站同一個呼吸節奏（吸 4、停 2、吐 6，一輪 12 秒） */
+  var holder = el('div','position:relative;height:250px;margin-top:10px');
+  holder.appendChild(el('div','position:absolute;left:50%;top:50%;width:290px;height:290px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.26) 0%,rgba(123,227,111,0) 66%);animation:th-halo 12s ease-in-out infinite'));
+  var center = el('div','position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)');
+  var breathe = el('div','animation:th-rings 12s ease-in-out infinite');
   var ringBox = el('div','width:210px;height:210px;transform:scale('+stage.scale+');opacity:'+stage.op+';transition:transform 1.4s cubic-bezier(.4,0,.3,1),opacity 1.4s ease;filter:drop-shadow(0 0 10px rgba(123,227,111,.35))');
   ringBox.innerHTML = ringSvg();
   breathe.appendChild(ringBox); center.appendChild(breathe); holder.appendChild(center);
