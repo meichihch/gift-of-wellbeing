@@ -981,7 +981,7 @@ function hero(title, sub){
 }
 /* 綠光圓盤：讓主角（樹、年輪）站在上面，呼應參考圖帳篷下的發光平台 */
 function glowStage(h){
-  var stage = el('div','position:relative;height:'+h+'px');
+  var stage = el('div','position:relative;height:'+(typeof h === 'number' ? h + 'px' : h));
   stage.appendChild(el('div','position:absolute;left:50%;top:46%;width:280px;height:280px;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.28) 0%,rgba(123,227,111,0) 66%);animation:th-halo 12s ease-in-out infinite'));
   groundRing(stage, 24, 270, 62);
   return stage;
@@ -1997,8 +1997,9 @@ function revealView(ctx){
     var f = FORESTS[tree.forest];
     var card = el('div', CARD + ';flex:0 0 '+(multi ? '86%' : '100%')+';scroll-snap-align:start;overflow:hidden;padding-bottom:18px');
     card.setAttribute('data-tree', tree.id);
-    var stage = glowStage(214);
-    stage.appendChild(fullTree('left:50%;bottom:44px;height:164px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.5))', null, true));
+    /* 樹尖到卡片上緣固定留 26px；螢幕矮（像 iPhone SE）時樹跟著縮一點，下面的按鈕才放得下 */
+    var stage = glowStage('clamp(214px, calc(234px - (812px - 100cqh) * 0.14), 234px)');
+    stage.appendChild(fullTree('left:50%;bottom:44px;height:calc(100% - 70px);transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.5))', null, true));
     stage.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:44px;height:44px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 0 24px rgba(123,227,111,.6)', tree.num));
     card.appendChild(stage);
     var body = el('div','padding:4px 18px 0');
