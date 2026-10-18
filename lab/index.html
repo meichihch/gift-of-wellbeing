@@ -60,7 +60,7 @@
 <body>
 <header>
   <h1>即時風景調校</h1>
-  <p>內部用。拉滑桿會馬上套到手機上；數字也可以直接打，不受滑桿範圍限制；每一列右邊寫著原本的值，按一下就回去。調好之後按「複製設定」，貼給 Claude 就好。</p>
+  <p>內部用。拉滑桿會馬上套到手機上；手機下方的分頁可以點，切到字多的畫面看字體；數字也可以直接打，不受滑桿範圍限制；每一列右邊寫著原本的值，按一下就回去。調好之後按「複製設定」，貼給 Claude 就好。</p>
 </header>
 <div id="motionNote" style="display:none;margin:0 24px 12px;padding:10px 14px;border-radius:12px;background:#FFF6DC;border:1px solid #E8D79A;color:#5A4A12;font-size:12.5px;line-height:1.6"></div>
 <div class="tabs">
@@ -73,6 +73,7 @@
   <div class="panel">
     <div class="row"><span class="lab">時段</span><div class="seg" id="todSeg"></div></div>
     <div class="row"><span class="lab">天氣</span><div class="seg" id="wxSeg"></div></div>
+    <div class="row"><span class="lab">字體</span><div class="seg" id="fontSeg"></div></div>
     <div class="row"><span class="lab">聲音</span><div class="seg" id="sndSeg"></div><span class="note">瀏覽器擋聲音的話，點一下手機裡的「山上的聲音」</span></div>
     <div class="groups" id="groups"></div>
     <div class="actions">
@@ -106,7 +107,7 @@ var GROUPS = [
 ];
 
 /* 目前的選擇與設定：存在這台電腦的瀏覽器裡，重新整理不會不見 */
-var state = { tod:'夜', wx:'clear', sound:false };
+var state = { tod:'夜', wx:'clear', sound:false, font:'noto' };
 var tune = {}, look = {}, bglook = {}, cloudlook = {};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}')); }catch(e){}
 try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); cloudlook = JSON.parse(localStorage.getItem('th-lab-cloudlook') || '{}'); }catch(e){}
@@ -128,6 +129,7 @@ function push(win, tod, wx, keepSound){
   if(th.BGLOOK) Object.keys(BG_DEF).forEach(function(k){ th.BGLOOK[k] = (k in bglook) ? bglook[k] : BG_DEF[k]; });
   if(th.CLOUD) Object.keys(CLOUD_DEF).forEach(function(k){ th.CLOUD[k] = (k in cloudlook) ? cloudlook[k] : CLOUD_DEF[k]; });
   if(!keepSound) th.mute(true);
+  if(th.font && state.font) th.font(state.font);
   th.scene(tod, wx);
   th.apply();
 }
@@ -144,11 +146,33 @@ frame.addEventListener('load', function(){
   TH = frame.contentWindow.__TH; DEF = TH && TH.DEFAULT;
   if(!TH){ document.getElementById('msg').textContent = '原型還沒有調校介面，請重新整理'; return; }
   buildGroups();
+  buildFonts();
   push(frame.contentWindow, state.tod, state.wx, true);
   TH.mute(!state.sound);
 });
 frame.src = src();
 
+/* 字體按鈕：每個按鈕用它自己的字體顯示；點了就換手機裡的字，「全部一次看」也一起換 */
+function buildFonts(){
+  if(!TH || !TH.FONTS) return;
+  var host = document.getElementById('fontSeg'); host.innerHTML = '';
+  TH.FONTS.forEach(function(f){
+    if(!document.querySelector('link[data-font="'+f.key+'"]')){
+      var l = document.createElement('link'); l.rel = 'stylesheet'; l.setAttribute('data-font', f.key);
+      l.href = 'https://fonts.googleapis.com/css2?family=' + f.q + '&display=swap'; document.head.appendChild(l);
+    }
+    var b = document.createElement('button');
+    b.textContent = f.name; b.title = f.note;
+    b.style.fontFamily = (f.latin ? "'" + f.latin + "'," : '') + "'" + f.family + "',sans-serif";
+    if(f.key === state.font) b.className = 'on';
+    b.onclick = function(){
+      state.font = f.key; save(); buildFonts();
+      TH.font(f.key);
+      Array.prototype.forEach.call(document.querySelectorAll('.cell iframe'), function(fr){ var th = fr.contentWindow && fr.contentWindow.__TH; if(th && th.font) th.font(f.key); });
+    };
+    host.appendChild(b);
+  });
+}
 function seg(host, items, cur, onPick){
   host.innerHTML = '';
   items.forEach(function(it){

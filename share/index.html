@@ -2602,6 +2602,8 @@ window.__TH = {
     if(S.screen === 7) renderScreen();
   },
   mute: function(on){ S.sceneMuted = !!on; if(on) stopSound(); else if(S.screen === 7) renderScreen(); },
+  /* 字體：調校頁可以直接換手機裡的字（分享版也行，不會記住） */
+  FONTS: FONTS, font: function(key){ applyFont(key); }, fontKey: function(){ return FONT_KEY; },
   /* 測試用：現在在播哪一組聲音、輸出的音量大小 */
   soundKey: function(){ return SND.key; },
   level: function(){
