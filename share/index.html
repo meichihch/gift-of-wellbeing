@@ -24,8 +24,8 @@
   @keyframes th-rings{0%,100%{transform:scale(.96) rotate(-.4deg)}33%,50%{transform:scale(1.04) rotate(.4deg)}}
   @keyframes th-glow{0%,100%{opacity:.7}50%{opacity:1}}
   /* 地上的光圈跟呼吸練習同一個節奏：吸氣 4 秒、停 2 秒、吐氣 6 秒，一輪 12 秒 */
-  @keyframes th-ring{0%,100%{transform:translateX(-50%) scale(.9);opacity:.55}33%,50%{transform:translateX(-50%) scale(1.08);opacity:1}}
-  @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.04);opacity:0}54%{opacity:.5}100%{transform:translateX(-50%) scale(1.65);opacity:0}}
+  @keyframes th-ring{0%,100%{transform:translateX(-50%) scale(.84);opacity:.35}33%,50%{transform:translateX(-50%) scale(1.12);opacity:1}}
+  @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.08);opacity:0}54%{opacity:.75}100%{transform:translateX(-50%) scale(1.8);opacity:0}}
   @keyframes th-halo{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.6}33%,50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
   @keyframes th-sway{0%,100%{transform:rotate(-.6deg)}50%{transform:rotate(.6deg)}}
   @keyframes th-swayv{0%,100%{transform:rotate(calc(var(--sway,0deg) * -1))}50%{transform:rotate(var(--sway,0deg))}}
@@ -34,6 +34,9 @@
   @keyframes th-dot{0%,100%{transform:translate(-50%,50%) scale(.8);opacity:.5}33%,50%{transform:translate(-50%,50%) scale(1.3);opacity:1}}
   /* 系統開了「減少動態效果」就停掉動畫；網址加 ?motion=1（調校頁會加）可以強制打開 */
   @media (prefers-reduced-motion: reduce){html:not([data-motion]) *{animation:none!important;transition:none!important}}
+  /* 手機開了「減少動態效果」：地上的圈不縮放，但還是慢慢亮暗，保留呼吸感 */
+  @keyframes th-glow{0%,100%{opacity:.35}33%,50%{opacity:1}}
+  @media (prefers-reduced-motion: reduce){html:not([data-motion]) [data-breathe]{animation:th-glow 12s ease-in-out infinite!important}}
   #app input::placeholder{color:rgba(242,246,240,.42)}
   #app *{scrollbar-width:none}
   #app *::-webkit-scrollbar{display:none}
@@ -546,8 +549,15 @@ function canvasUrl(cv){
   });
 }
 /* tint：把整棵樹染成指定顏色（白天的主角用跟風景同一組的深綠）；沒給就是原本的淺色線稿 */
-function fullTreeUrl(tint){
-  var key = (tint || '') + JSON.stringify(TREE_LOOK);
+/* 線條粗細依樹在畫面上的大小決定：目標是畫面上的線大約 lineWidth px。
+   原圖線條約 3 原圖像素；樹畫得越小越需要加粗，大樹（例如首頁、分享卡那麼大）幾乎不加 */
+function lineRadiusFor(h){
+  var r = (TREE_LOOK.lineWidth*790/Math.max(60, h || 200) - 3)/2;
+  return Math.max(0, Math.min(2.5, Math.round(r*10)/10));
+}
+function fullTreeUrl(tint, rad){
+  if(rad == null) rad = lineRadiusFor(200);
+  var key = (tint || '') + '|' + rad + JSON.stringify(TREE_LOOK);
   if(!FULL_CACHE[key]) FULL_CACHE[key] = treeSrc().then(function(im){
     var W = 363, H = 790;
     var base = document.createElement('canvas'); base.width = W; base.height = H;
@@ -556,7 +566,7 @@ function fullTreeUrl(tint){
     b.save(); b.translate(W, 0); b.scale(-1, 1); b.drawImage(im, 0, 0, 181.5, 790, 0, 0, 181.5, 790); b.restore();
     /* 線條加粗：每個像素看周圍的點，離得越遠、影響越小（半徑 r 外 1 格內慢慢淡出），取最不透明的那個。
        跟以前「只算整格」不同，半徑從 0.7 調到 0.8 只會多一點點，不會突然跳一格 */
-    var rad = TREE_LOOK.lineRadius, thick = base;
+    var thick = base;
     if(rad > 0){
       var src = b.getImageData(0, 0, W, H), d = src.data, dil = b.createImageData(W, H), od = dil.data;
       var offs = [], R = Math.ceil(rad + 1);
@@ -598,7 +608,7 @@ function fullTreeUrl(tint){
   return FULL_CACHE[key];
 }
 /* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
-var TREE_LOOK = { lineRadius:0.9, bodyReach:8, bodyAlpha:0.08 };   /* 0.9 跟以前的 1 看起來差不多 */
+var TREE_LOOK = { lineWidth:1.15, bodyReach:8, bodyAlpha:0.08 };   /* lineWidth：畫面上的線大約幾 px，不管樹畫多大 */
 /* 樹枝在風裡擺：把樹切成小格，每一格依位置位移——樹幹附近不動，越往外、越往上的枝尖動得越多；
    整體被風往同一邊推，不同高度的枝層錯開一點時間（風一層層吹過），枝尖再帶一點上下晃，偶爾一陣大一點的風。
    不是整棵樹以樹根為軸在搖 */
@@ -642,8 +652,13 @@ function fullTree(style, tint, sway){
     img.setAttribute('style','position:absolute;inset:0;width:100%;height:100%');
     wrap.appendChild(img);
   };
-  var ready = FULL_DATA[(tint || '') + JSON.stringify(TREE_LOOK)];
-  if(ready){ putImg(ready); return wrap; }
+  /* 先量樹在畫面上多高，再決定線條要加粗多少；還沒排版好（量不到）就先當 200px */
+  var go = function(){
+    var rad = lineRadiusFor(wrap.offsetHeight), ready = FULL_DATA[(tint || '') + '|' + rad + JSON.stringify(TREE_LOOK)];
+    if(ready){ putImg(ready); return; }
+    fullTreeUrl(tint, rad).then(putImg).catch(function(){});
+  };
+  requestAnimationFrame(go);
   /* 還沒做好之前先用原圖兩半拼（要染色的就先空著，免得閃一下白色），做好就換掉；畫布不能用（例如直接開檔案）就一直用原圖 */
   for(var i=0; i<2 && !tint; i++){
     var half = el('div','position:absolute;top:0;bottom:0;width:50%;overflow:hidden;' + (i ? 'right:0;transform:scaleX(-1)' : 'left:0'));
@@ -653,7 +668,6 @@ function fullTree(style, tint, sway){
     img.onerror = function(){ wrap.style.display = 'none'; };
     half.appendChild(img); wrap.appendChild(half);
   }
-  fullTreeUrl(tint).then(putImg).catch(function(){});
   return wrap;
 }
 /* 生成的山景：取代照片，沒有授權問題。kind 是天氣（clear／partly／cloudy／fog／rain／storm／snow），預設起霧 */
@@ -955,7 +969,7 @@ function glowStage(h){
 function groundRing(parent, bottom, w, h){
   var base = 'position:absolute;left:50%;bottom:'+bottom+'px;width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
   parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.35);animation:th-ripple 12s ease-out infinite'));
-  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite'));
+  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite')).setAttribute('data-breathe','');
 }
 /* 一片森林：後排的樹小而淡，前排幾棵比較清楚，頭上掛著名牌（名字、樹種、年紀）。
    名牌跟地上的光圈一樣用呼吸的節奏，彼此錯開一點，像各自在呼吸 */
@@ -967,8 +981,10 @@ function forestTeaser(ids){
   /* 樹高是「這一塊扣掉名牌要的空間」的比例：螢幕矮，整片森林跟著縮，最高那張名牌也不會被切掉 */
   var HEAD = 96;
   var hOf = function(f){ return 'calc((100% - ' + HEAD + 'px) * ' + f + ')'; };
+  /* 原圖底部約 7% 是空白、頂端約 2.5% 是空白：依每棵樹的高度往下補，樹根才會都對齊在同一條地面上 */
+  var SINK = 0.07, TOPGAP = 0.025;
   var plant = function(x, f, style, sway){
-    var w = el('div','position:absolute;left:'+x+'%;bottom:'+GROUND+'px;height:'+hOf(f)+';transform:translateX(-50%)');
+    var w = el('div','position:absolute;left:'+x+'%;bottom:calc(' + GROUND + 'px - ' + hOf(f*SINK) + ');height:'+hOf(f)+';transform:translateX(-50%)');
     w.appendChild(fullTree('position:relative;display:block;height:100%;' + style, null, sway));
     st.appendChild(w);
   };
@@ -981,10 +997,10 @@ function forestTeaser(ids){
   ids.forEach(function(id, i){
     var tr = TREES[id], x = front[i][0], f = front[i][1];
     plant(x, f, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))', true);
-    var topAt = 'calc(' + (GROUND - 6) + 'px + ' + hOf(f) + ')';   /* 樹梢的高度（從底部算） */
+    var topAt = 'calc(' + GROUND + 'px + ' + hOf(f*(1 - SINK - TOPGAP)) + ' - 3px)';   /* 樹梢的高度（從底部算） */
     var delay = (-i * 1.6) + 's';
     st.appendChild(el('div','position:absolute;left:'+x+'%;bottom:'+topAt+';width:6px;height:6px;border-radius:50%;background:'+C.lime+';box-shadow:0 0 8px rgba(123,227,111,.8);animation:th-dot 12s ease-in-out '+delay+' infinite'));
-    var tag = el('div','position:absolute;left:'+x+'%;bottom:calc(' + (GROUND - 3) + 'px + ' + hOf(f) + ');display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:th-tag 12s ease-in-out '+delay+' infinite');
+    var tag = el('div','position:absolute;left:'+x+'%;bottom:calc(' + GROUND + 'px + ' + hOf(f*(1 - SINK - TOPGAP)) + ');display:flex;flex-direction:column;align-items:center;transform-origin:50% 100%;animation:th-tag 12s ease-in-out '+delay+' infinite');
     tag.setAttribute('data-tree-tag', id);
     var pill = el('div','padding:6px 11px 7px;border-radius:14px;text-align:center;white-space:nowrap;background:rgba(12,28,19,.55);border:1px solid rgba(123,227,111,.38);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)');
     pill.appendChild(el('div','font-size:13px;font-weight:500;color:'+C.text, tr.name));
@@ -1010,37 +1026,47 @@ function arrivalStage(){
   return st;
 }
 /* 光點：像山上空氣裡的微光，慢慢往上飄、忽明忽暗；離開畫面就停 */
+/* 螢火蟲：在樹的附近慢慢亂飛（方向一點一點轉），一亮一暗地閃；黃綠色，亮的時候帶一圈光暈 */
 function mountMotes(root){
   var cv = document.createElement('canvas');
   cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%;pointer-events:none');
   cv.setAttribute('aria-hidden','true');
   root.appendChild(cv);
-  var still = reduceMotion();
-  var motes = [], last = performance.now();
-  function spawn(w, h, anywhere){
-    var spread = (Math.random() + Math.random() + Math.random()) / 3;   /* 靠近樹的地方多一點 */
-    return { x:w*(0.12 + spread*0.76), y:anywhere ? h*(0.15 + Math.random()*0.8) : h*(0.82 + Math.random()*0.1),
-             r:0.6 + Math.random()*1.4, v:5 + Math.random()*9, ph:Math.random()*6.283, sp:0.6 + Math.random()*1.4,
-             lime:Math.random() < 0.55 };
+  var still = reduceMotion(), flies = [], last = performance.now();
+  function spawn(w, h){
+    var spread = (Math.random() + Math.random() + Math.random())/3;   /* 靠近樹的地方多一點 */
+    return { x:w*(0.1 + spread*0.8), y:h*(0.15 + Math.random()*0.75), ang:Math.random()*6.283, turn:(Math.random() - 0.5)*1.2,
+             v:8 + Math.random()*14, r:1 + Math.random()*1.1,
+             on:Math.random()*2, period:2.2 + Math.random()*2.8, flash:0.6 + Math.random()*0.7, warm:Math.random() };
   }
   function frame(nowT){
     if(!cv.isConnected) return;
     var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
     if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
-    if(!motes.length) for(var i=0;i<28;i++) motes.push(spawn(w, h, true));
+    if(!flies.length && w && h) for(var i=0; i<18; i++) flies.push(spawn(w, h));
     var dt = Math.min(0.05, (nowT - last)/1000); last = nowT;
     var g = cv.getContext('2d');
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
-    motes.forEach(function(m, i){
-      if(!still){ m.y -= m.v*dt; m.x += Math.sin(nowT*0.0006*m.sp + m.ph)*6*dt; }
-      if(m.y < h*0.06) motes[i] = m = spawn(w, h, false);
-      var edge = Math.min(1, (m.y - h*0.06)/(h*0.25));   /* 越往上越淡 */
-      var a = edge * (0.35 + 0.45*(0.5 + 0.5*Math.sin(nowT*0.002*m.sp + m.ph)));
-      var grd = g.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r*4);
-      var col = m.lime ? '165,234,152' : '242,246,240';
-      grd.addColorStop(0, 'rgba('+col+','+a+')');
+    flies.forEach(function(f){
+      if(!still){
+        /* 方向慢慢轉、偶爾換個轉向，看起來在亂飛；碰到邊緣就轉回來 */
+        if(Math.random() < dt*0.5) f.turn = (Math.random() - 0.5)*1.6;
+        f.ang += f.turn*dt;
+        var cx = w*0.5 - f.x, cy = h*0.55 - f.y;
+        if(f.x < w*0.06 || f.x > w*0.94 || f.y < h*0.1 || f.y > h*0.95) f.ang += (Math.atan2(cy, cx) - f.ang)*0.08;
+        f.x += Math.cos(f.ang)*f.v*dt; f.y += Math.sin(f.ang)*f.v*dt*0.7;
+        f.on = (f.on + dt) % f.period;
+      }
+      /* 一亮一暗：亮的時間 flash 秒，慢慢亮、慢慢暗；暗的時候還留一點點 */
+      var p = f.on < f.flash ? Math.sin(Math.PI*f.on/f.flash) : 0;
+      var a = still ? 0.6 : 0.12 + 0.88*p;
+      var col = f.warm < 0.6 ? '226,240,120' : '246,236,150';               /* 黃綠、偏暖的黃 */
+      var R = f.r*(3 + 3*p);
+      var grd = g.createRadialGradient(f.x, f.y, 0, f.x, f.y, R);
+      grd.addColorStop(0, 'rgba(255,252,220,'+a+')');
+      grd.addColorStop(0.25, 'rgba('+col+','+(a*0.8)+')');
       grd.addColorStop(1, 'rgba('+col+',0)');
-      g.fillStyle = grd; g.beginPath(); g.arc(m.x, m.y, m.r*4, 0, 6.283); g.fill();
+      g.fillStyle = grd; g.beginPath(); g.arc(f.x, f.y, R, 0, 6.283); g.fill();
     });
     requestAnimationFrame(frame);
   }
