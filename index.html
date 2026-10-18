@@ -29,10 +29,9 @@
   @keyframes th-tag{0%,100%{transform:translateX(-50%) scale(.95);opacity:.7}33%,50%{transform:translateX(-50%) scale(1.04);opacity:1}}
   @keyframes th-dot{0%,100%{transform:translate(-50%,50%) scale(.8);opacity:.5}33%,50%{transform:translate(-50%,50%) scale(1.3);opacity:1}}
   /* 系統開了「減少動態效果」就停掉動畫；網址加 ?motion=1（調校頁會加）可以強制打開 */
-  @media (prefers-reduced-motion: reduce){html:not([data-motion]) *{animation:none!important;transition:none!important}}
-  /* 手機開了「減少動態效果」：地上的圈不縮放，但還是慢慢亮暗，保留呼吸感 */
-  @keyframes th-glow{0%,100%{opacity:.35}33%,50%{opacity:1}}
-  @media (prefers-reduced-motion: reduce){html:not([data-motion]) [data-breathe]{animation:th-glow 12s ease-in-out infinite!important}}
+  /* 這裡的動態都是慢、小幅度的環境動態（呼吸、螢火蟲、雲飄、樹枝擺），沒有大幅滑動或縮放，
+     所以手機開了「減少動態效果」也照常播；要看靜止版本用 ?motion=0 */
+  html[data-still] *{animation:none!important;transition:none!important}
   #app input::placeholder{color:rgba(242,246,240,.42)}
   #app *{scrollbar-width:none}
   #app *::-webkit-scrollbar{display:none}
@@ -400,9 +399,9 @@ function morningText(tree){
 var QS = (function(){ try { return new URLSearchParams(location.search); } catch(e){ return { get:function(){ return null; } }; } })();
 var HOUR_FORCE = QS.get('hour'), WX_FORCE = QS.get('wx');
 /* 減少動態效果：尊重系統設定；?motion=1 時一律有動畫（調校頁要看動畫細節） */
-var MOTION_FORCE = QS.get('motion') === '1';
-if(MOTION_FORCE) document.documentElement.setAttribute('data-motion', '');
-function reduceMotion(){ return !MOTION_FORCE && !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+var MOTION_OFF = QS.get('motion') === '0';
+if(MOTION_OFF) document.documentElement.setAttribute('data-still', '');
+function reduceMotion(){ return MOTION_OFF; }
 function curHour(){ return (HOUR_FORCE !== null && HOUR_FORCE !== '' && !isNaN(+HOUR_FORCE)) ? +HOUR_FORCE : new Date().getHours(); }
 function curTod(){ var h=curHour(); return h>=5&&h<10?'晨':h>=10&&h<16?'午':h>=16&&h<19?'暮':'夜'; }
 
@@ -965,7 +964,7 @@ function glowStage(h){
 function groundRing(parent, bottom, w, h){
   var base = 'position:absolute;left:50%;bottom:'+bottom+'px;width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
   parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.35);animation:th-ripple 12s ease-out infinite'));
-  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite')).setAttribute('data-breathe','');
+  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite'));
 }
 /* 一片森林：後排的樹小而淡，前排幾棵比較清楚，頭上掛著名牌（名字、樹種、年紀）。
    名牌跟地上的光圈一樣用呼吸的節奏，彼此錯開一點，像各自在呼吸 */
