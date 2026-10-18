@@ -73,6 +73,7 @@
   <div class="panel">
     <div class="row"><span class="lab">時段</span><div class="seg" id="todSeg"></div></div>
     <div class="row"><span class="lab">天氣</span><div class="seg" id="wxSeg"></div></div>
+    <div class="row"><span class="lab">季節</span><div class="seg" id="seasonSeg"></div><span class="note">聲音跟著季節：春天鳥多、夏天有蟬、秋天蟲少、冬天安靜</span></div>
     <div class="row"><span class="lab">字體</span><div class="seg" id="fontSeg"></div></div>
     <div class="row"><span class="lab">聲音</span><div class="seg" id="sndSeg"></div><span class="note">瀏覽器擋聲音的話，點一下手機裡的「山上的聲音」</span></div>
     <div class="groups" id="groups"></div>
@@ -107,7 +108,7 @@ var GROUPS = [
 ];
 
 /* 目前的選擇與設定：存在這台電腦的瀏覽器裡，重新整理不會不見 */
-var state = { tod:'夜', wx:'clear', sound:false, font:'goround' };
+var state = { tod:'夜', wx:'clear', sound:false, font:'goround', month:null };
 var tune = {}, look = {}, bglook = {}, cloudlook = {};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}')); }catch(e){}
 try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); cloudlook = JSON.parse(localStorage.getItem('th-lab-cloudlook') || '{}'); }catch(e){}
@@ -130,6 +131,7 @@ function push(win, tod, wx, keepSound){
   if(th.CLOUD) Object.keys(CLOUD_DEF).forEach(function(k){ th.CLOUD[k] = (k in cloudlook) ? cloudlook[k] : CLOUD_DEF[k]; });
   if(!keepSound) th.mute(true);
   if(th.font && state.font) th.font(state.font);
+  if(th.month) th.month(state.month);
   th.scene(tod, wx);
   th.apply();
 }
@@ -185,6 +187,7 @@ function seg(host, items, cur, onPick){
 function renderSegs(){
   seg(document.getElementById('todSeg'), TODS, state.tod, function(v){ state.tod = v; save(); renderSegs(); TH && TH.scene(state.tod, state.wx); });
   seg(document.getElementById('wxSeg'), WXS, state.wx, function(v){ state.wx = v; save(); renderSegs(); TH && TH.scene(state.tod, state.wx); });
+  seg(document.getElementById('seasonSeg'), [[null,'真實月份'],[4,'春'],[7,'夏'],[10,'秋'],[1,'冬']], state.month, function(v){ state.month = v; save(); renderSegs(); if(TH && TH.month){ TH.month(v); TH.mute(!state.sound); } });
   seg(document.getElementById('sndSeg'), [[false,'靜音'],[true,'播放']], state.sound, function(v){ state.sound = v; save(); renderSegs(); TH && TH.mute(!v); });
 }
 renderSegs();

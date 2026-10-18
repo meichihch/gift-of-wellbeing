@@ -1077,6 +1077,14 @@ function sceneFog(ctx, out){
   return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
 }
 /* 風吹過樹冠：低沉的風加上高頻的葉子沙沙聲，一陣一陣 */
+/* 風的強度：冬天的風比較冷、比較強（音量大一點、偏高一點） */
+function windScene(level){
+  return function(ctx, out){
+    var g = ctx.createGain(); g.gain.value = level; g.connect(out);
+    var stop = sceneWind(ctx, g);
+    return stop;
+  };
+}
 function sceneWind(ctx, out){
   /* 風：低沉的風聲＋很輕的樹葉沙沙，跟著陣風一起起伏。
      陣風 6–15 秒一次、慢慢起慢慢落（以前 1.4–4 秒一次又有一層高頻嘶嘶聲，聽起來像雜訊） */
@@ -1094,55 +1102,109 @@ function sceneWind(ctx, out){
   gust();
   return function(){ alive = false; try{ wind.src.stop(); }catch(e){} try{ leaf.src.stop(); }catch(e){} };
 }
-/* 山雀：遠遠的林間底噪，加上兩音一組、重複幾次的叫聲，從不同方向傳來 */
-function sceneBirds(ctx, out){
-  var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 700, 0, 0.18);
-  function note(tt, f0, f1, dur, vol, pan){
-    var o = ctx.createOscillator(), e = ctx.createGain();
-    o.type = 'sine';
-    o.frequency.setValueAtTime(f0, tt); o.frequency.exponentialRampToValueAtTime(f1, tt + dur);
-    e.gain.setValueAtTime(0.0001, tt);
-    e.gain.exponentialRampToValueAtTime(vol, tt + 0.012);
-    e.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
-    o.connect(e); toOut(ctx, e, out, pan);
-    o.start(tt); o.stop(tt + dur + 0.02);
-  }
-  function phrase(){
-    if(!alive) return;
-    var tt = ctx.currentTime + 0.05, pan = Math.random()*1.4 - 0.7, vol = 0.2 + Math.random()*0.15;
-    var base = 4200 + Math.random()*900, reps = 2 + Math.floor(Math.random()*3);
-    for(var r=0;r<reps;r++){
-      note(tt,        base*1.15, base,      0.07, vol,      pan);
-      note(tt + 0.11, base*0.78, base*0.7,  0.09, vol*0.85, pan);
-      tt += 0.28;
-    }
-    setTimeout(phrase, reps*280 + 1200 + Math.random()*3200);
-  }
-  phrase();
-  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
-}
-/* 蟲鳴：三隻蟲在不同方向，各自用自己的節奏「唧唧唧」 */
-function sceneCrickets(ctx, out){
-  var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 400, 0, 0.1);
-  var bugs = [0,1,2].map(function(i){
-    return { f:4300 + i*380 + Math.random()*200, pan:-0.6 + i*0.6, every:0.55 + Math.random()*0.35, vol:0.1 + Math.random()*0.06 };
-  });
-  function chirp(c){
-    if(!alive) return;
-    var t0 = ctx.currentTime + 0.02, pulses = 3 + Math.floor(Math.random()*2);
-    for(var p=0;p<pulses;p++){
-      var tt = t0 + p*0.032, o = ctx.createOscillator(), e = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = c.f;
+/* 鳥：遠遠的林間底噪，加上幾種叫聲從不同方向傳來。
+   o.gap：兩段叫聲之間隔幾秒（越短越熱鬧）；o.kinds：有哪幾種叫法
+   tit 山雀式兩音一組、warble 一串高低起伏的婉轉叫聲、whistle 一聲長長往下滑的口哨 */
+function birdsScene(o){
+  o = o || {};
+  var gap = o.gap || [1.2, 4.4], kinds = o.kinds || ['tit'], vol0 = o.vol || 1;
+  return function(ctx, out){
+    var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 700, 0, 0.18);
+    function note(tt, f0, f1, dur, vol, pan){
+      var osc = ctx.createOscillator(), e = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(f0, tt); osc.frequency.exponentialRampToValueAtTime(f1, tt + dur);
       e.gain.setValueAtTime(0.0001, tt);
-      e.gain.exponentialRampToValueAtTime(c.vol, tt + 0.006);
-      e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.024);
-      o.connect(e); toOut(ctx, e, out, c.pan);
-      o.start(tt); o.stop(tt + 0.03);
+      e.gain.exponentialRampToValueAtTime(vol, tt + 0.012);
+      e.gain.exponentialRampToValueAtTime(0.0001, tt + dur);
+      osc.connect(e); toOut(ctx, e, out, pan);
+      osc.start(tt); osc.stop(tt + dur + 0.02);
     }
-    setTimeout(function(){ chirp(c); }, (c.every + Math.random()*0.15) * 1000);
-  }
-  bugs.forEach(function(c, i){ setTimeout(function(){ chirp(c); }, i*230); });
-  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+    var SONG = {
+      tit: function(tt, pan, vol){
+        var base = 4200 + Math.random()*900, reps = 2 + Math.floor(Math.random()*3);
+        for(var r=0; r<reps; r++){ note(tt, base*1.15, base, 0.07, vol, pan); note(tt + 0.11, base*0.78, base*0.7, 0.09, vol*0.85, pan); tt += 0.28; }
+        return reps*0.28;
+      },
+      warble: function(tt, pan, vol){
+        var n = 5 + Math.floor(Math.random()*5), f = 2400 + Math.random()*900;
+        for(var i=0; i<n; i++){
+          var nf = f*(0.82 + Math.random()*0.42), d = 0.06 + Math.random()*0.07;
+          note(tt, f, nf, d, vol*(0.7 + Math.random()*0.3), pan); f = nf; tt += d + 0.02 + Math.random()*0.04;
+        }
+        return n*0.12;
+      },
+      whistle: function(tt, pan, vol){
+        var f = 2600 + Math.random()*500;
+        note(tt, f, f*0.72, 0.38 + Math.random()*0.2, vol*0.75, pan);
+        return 0.6;
+      }
+    };
+    function phrase(){
+      if(!alive) return;
+      var tt = ctx.currentTime + 0.05, pan = Math.random()*1.4 - 0.7, vol = (0.16 + Math.random()*0.15)*vol0;
+      var k = kinds[Math.floor(Math.random()*kinds.length)], len = SONG[k](tt, pan, vol);
+      setTimeout(phrase, (len + gap[0] + Math.random()*(gap[1] - gap[0]))*1000);
+    }
+    phrase();
+    if(o.voices > 1) setTimeout(phrase, 700);                                /* 鳥多的時候，兩條叫聲交錯 */
+    return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+  };
+}
+var sceneBirds = birdsScene({});
+/* 蟲鳴：n 隻蟲在不同方向，各自用自己的節奏「唧唧唧」。slow：天冷時叫得慢（秋天） */
+function cricketsScene(n, slow, vol0){
+  n = n || 3; slow = slow || 1; vol0 = vol0 || 1;
+  return function(ctx, out){
+    var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 400, 0, 0.1);
+    var bugs = []; for(var i=0; i<n; i++) bugs.push({ f:4300 + i*380 + Math.random()*200, pan:-0.6 + (n > 1 ? i*1.2/(n - 1) : 0.6), every:(0.55 + Math.random()*0.35)*slow, vol:(0.1 + Math.random()*0.06)*vol0 });
+    function chirp(c){
+      if(!alive) return;
+      var t0 = ctx.currentTime + 0.02, pulses = 3 + Math.floor(Math.random()*2);
+      for(var p=0; p<pulses; p++){
+        var tt = t0 + p*0.032*slow, osc = ctx.createOscillator(), e = ctx.createGain();
+        osc.type = 'sine'; osc.frequency.value = c.f;
+        e.gain.setValueAtTime(0.0001, tt);
+        e.gain.exponentialRampToValueAtTime(c.vol, tt + 0.006);
+        e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.024);
+        osc.connect(e); toOut(ctx, e, out, c.pan);
+        osc.start(tt); osc.stop(tt + 0.03);
+      }
+      setTimeout(function(){ chirp(c); }, (c.every + Math.random()*0.15) * 1000);
+    }
+    bugs.forEach(function(c, i){ setTimeout(function(){ chirp(c); }, i*230); });
+    return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
+  };
+}
+var sceneCrickets = cricketsScene(3, 1, 1);
+/* 蛙聲：幾隻在不同方向，一串短促的「咯咯咯」，隔一下再叫；聲音低、悶，像從溪邊傳來 */
+function frogsScene(n, vol0){
+  return function(ctx, out){
+    var alive = true, lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 1400; lp.connect(out);
+    function croak(f, pan, vol){
+      var t0 = ctx.currentTime + 0.02, pulses = 3 + Math.floor(Math.random()*4);
+      for(var p=0; p<pulses; p++){
+        var tt = t0 + p*0.085, osc = ctx.createOscillator(), bp = ctx.createBiquadFilter(), e = ctx.createGain();
+        osc.type = 'sawtooth'; osc.frequency.setValueAtTime(f, tt); osc.frequency.exponentialRampToValueAtTime(f*0.86, tt + 0.05);
+        bp.type = 'bandpass'; bp.frequency.value = f*2.2; bp.Q.value = 3;
+        e.gain.setValueAtTime(0.0001, tt); e.gain.exponentialRampToValueAtTime(vol, tt + 0.008); e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.06);
+        osc.connect(bp); bp.connect(e); toOut(ctx, e, lp, pan);
+        osc.start(tt); osc.stop(tt + 0.07);
+      }
+      return pulses*0.085;
+    }
+    for(var i=0; i<n; i++){
+      (function(fr){
+        setTimeout(function loop(){
+          if(!alive) return;
+          var len = croak(fr.f, fr.pan, fr.vol);
+          setTimeout(loop, (len + 1.2 + Math.random()*2.8)*1000);
+        }, i*600 + Math.random()*800);
+      })({ f:300 + Math.random()*260, pan:Math.random()*1.6 - 0.8, vol:(0.07 + Math.random()*0.05)*(vol0 || 1) });
+    }
+    return function(){ alive = false; };
+  };
 }
 /* 遠處的貓頭鷹：低低的「呼——呼呼——」，隔一陣子才叫一次 */
 function sceneOwl(ctx, out){
@@ -1195,11 +1257,6 @@ function sceneCicadas(ctx, out){
     }, i*4000);
   });
   return function(){ alive = false; voices.forEach(function(v){ try{ v.src.stop(); }catch(e){} try{ v.lfo.stop(); }catch(e){} }); };
-}
-/* 蟬只在夏天叫；阿里山這種高山比平地短，抓 6–8 月（網址 ?month=7 可以指定月份來試） */
-function cicadaSeason(){
-  var m = +(QS.get('month') || (new Date().getMonth() + 1));
-  return m >= 6 && m <= 8;
 }
 /* 一小段雜訊，給雨點、葉子輕響共用 */
 var BURST_BUF = null;
@@ -1286,31 +1343,73 @@ function layered(layers){
     return function(){ stops.forEach(function(s){ s(); }); };
   };
 }
+/* ── 季節：照月份（阿里山這種中高海拔山區的一般情況，不是單一物種的精確資料）──
+   春 3–5 鳥最熱鬧、晚上開始有蛙；夏 6–8 中午有蟬、晚上蟲最多；
+   秋 9–11 鳥變少、晚上的蟲稀疏又慢；冬 12–2 很安靜、風冷，晚上幾乎沒有蟲 */
+var MONTH_FORCE = null;
+function curMonth(){ return +(MONTH_FORCE || QS.get('month') || (new Date().getMonth() + 1)); }
+function curSeason(){ var m = curMonth(); return m >= 3 && m <= 5 ? 'spring' : m >= 6 && m <= 8 ? 'summer' : m >= 9 && m <= 11 ? 'autumn' : 'winter'; }
+var BIRDS = {
+  spring: birdsScene({ gap:[0.4, 1.8], kinds:['tit', 'warble', 'whistle'], voices:2 }),   /* 繁殖季，好幾種鳥交錯 */
+  summer: birdsScene({ gap:[1.2, 4.2], kinds:['tit', 'warble'] }),
+  autumn: birdsScene({ gap:[3, 8], kinds:['tit'] }),
+  winter: birdsScene({ gap:[6, 14], kinds:['tit'], vol:0.8 })                          /* 偶爾幾聲 */
+};
 var SOUNDSCAPES = {
   fog:sceneFog, wind:sceneWind, birds:sceneBirds,
-  /* 即時風景：跟著山上的時段 */
-  'scene-晨': layered([[sceneFog, 0.8], [sceneBirds, 0.7], [sceneWind, 0.35]]),   /* 霧滴、山雀（近）、風很輕 */
-  'scene-午': layered([[sceneCicadas, 1], [sceneWind, 0.6]]),                    /* 夏天：蟬（遠）、風吹過樹冠 */
-  'scene-午-off': layered([[sceneBirds, 0.45], [sceneWind, 0.7]]),              /* 不是夏天：鳥、風吹過樹冠 */
-  'scene-暮': layered([[sceneWind, 0.8], [sceneBirds, 0.6]]),                    /* 晚風、山雀歸巢 */
-  'scene-夜': layered([[sceneCrickets, 1], [sceneOwl, 1]]),                      /* 蟲鳴、貓頭鷹（遠） */
-  /* 天氣蓋過時段：下雨、雷雨、下雪 */
+  /* 下雨、雷雨、下雪：天氣蓋過時段 */
   'wx-drizzle':    layered([[rainScene(0), 1], [sceneWind, 0.25]]),
   'wx-rain':       layered([[rainScene(1), 1], [sceneWind, 0.3]]),
   'wx-rain-heavy': layered([[rainScene(2), 1], [sceneWind, 0.45]]),
   'wx-storm':      layered([[rainScene(2), 1.1], [sceneWind, 0.6], [sceneThunder, 1]]),
-  /* 雨剛停：葉子滴水；白天鳥慢慢回來，晚上蟲開始叫 */
-  'after-day':     layered([[sceneDrips, 1], [sceneBirds, 0.35], [sceneWind, 0.2]]),
-  'after-night':   layered([[sceneDrips, 1], [sceneCrickets, 0.45]]),
-  'wx-snow':  layered([[sceneWind, 0.45]])
+  'wx-snow':       layered([[windScene(1.2), 0.45]])
 };
+/* 四個時段 × 四季 */
+var SEASON_SCENES = {
+  spring: {
+    '晨': [[sceneFog, 0.7], [BIRDS.spring, 0.9], [sceneWind, 0.3]],
+    '午': [[BIRDS.spring, 0.6], [sceneWind, 0.6]],
+    '暮': [[sceneWind, 0.7], [BIRDS.spring, 0.6]],
+    '夜': [[frogsScene(3, 1), 1], [cricketsScene(1, 1.1, 0.7), 1], [sceneOwl, 0.8]],
+    'after-day': [[sceneDrips, 1], [BIRDS.spring, 0.45], [sceneWind, 0.2]],
+    'after-night': [[sceneDrips, 1], [frogsScene(3, 1.1), 1]]
+  },
+  summer: {
+    '晨': [[sceneFog, 0.8], [BIRDS.summer, 0.7], [sceneWind, 0.35]],
+    '午': [[sceneCicadas, 1], [sceneWind, 0.6]],
+    '暮': [[sceneWind, 0.8], [BIRDS.summer, 0.6]],
+    '夜': [[cricketsScene(4, 1, 1), 1], [frogsScene(2, 0.8), 1], [sceneOwl, 0.8]],
+    'after-day': [[sceneDrips, 1], [BIRDS.summer, 0.35], [sceneWind, 0.2]],
+    'after-night': [[sceneDrips, 1], [cricketsScene(3, 1, 0.6), 1], [frogsScene(2, 0.9), 1]]
+  },
+  autumn: {
+    '晨': [[sceneFog, 0.8], [BIRDS.autumn, 0.7], [sceneWind, 0.45]],
+    '午': [[BIRDS.autumn, 0.5], [sceneWind, 0.75]],
+    '暮': [[sceneWind, 0.85], [BIRDS.autumn, 0.5]],
+    '夜': [[cricketsScene(2, 1.7, 0.8), 1], [sceneOwl, 1]],
+    'after-day': [[sceneDrips, 1], [BIRDS.autumn, 0.35], [sceneWind, 0.25]],
+    'after-night': [[sceneDrips, 1], [cricketsScene(1, 1.8, 0.6), 1]]
+  },
+  winter: {
+    '晨': [[sceneFog, 0.6], [BIRDS.winter, 0.6], [windScene(1.25), 0.5]],
+    '午': [[BIRDS.winter, 0.5], [windScene(1.3), 0.8]],
+    '暮': [[windScene(1.3), 0.9], [BIRDS.winter, 0.4]],
+    '夜': [[windScene(1.2), 0.55], [sceneOwl, 1.1]],                                   /* 冬夜沒有蟲，只剩風和貓頭鷹 */
+    'after-day': [[sceneDrips, 1], [BIRDS.winter, 0.3], [windScene(1.2), 0.3]],
+    'after-night': [[sceneDrips, 1], [windScene(1.1), 0.35]]
+  }
+};
+Object.keys(SEASON_SCENES).forEach(function(se){
+  Object.keys(SEASON_SCENES[se]).forEach(function(k){ SOUNDSCAPES['season-' + se + '-' + k] = layered(SEASON_SCENES[se][k]); });
+});
+function cicadaSeason(){ return curSeason() === 'summer'; }
 function sceneKey(tod, w){
   if(w.kind === 'storm') return 'wx-storm';
   if(w.kind === 'rain')  return w.sub === 'drizzle' ? 'wx-drizzle' : (w.heavy >= 1 ? 'wx-rain-heavy' : 'wx-rain');
   if(w.kind === 'snow')  return 'wx-snow';
-  if(w.after)            return tod === '夜' ? 'after-night' : 'after-day';
-  if(tod === '午' && !cicadaSeason()) return 'scene-午-off';
-  return 'scene-' + tod;
+  var se = curSeason();
+  if(w.after)            return 'season-' + se + '-' + (tod === '夜' ? 'after-night' : 'after-day');
+  return 'season-' + se + '-' + tod;
 }
 function playSound(key){
   if(SND.key === key) return;
@@ -2728,6 +2827,7 @@ window.__TH = {
   mute: function(on){ S.sceneMuted = !!on; if(on) stopSound(); else if(S.screen === 7) renderScreen(); },
   /* 字體：調校頁可以直接換手機裡的字（分享版也行，不會記住） */
   FONTS: FONTS, font: function(key){ applyFont(key); }, fontKey: function(){ return FONT_KEY; },
+  month: function(m){ MONTH_FORCE = m || null; if(S.screen === 7){ stopSound(); renderScreen(); } }, season: function(){ return curSeason(); },
   /* 測試用：現在在播哪一組聲音、輸出的音量大小 */
   soundKey: function(){ return SND.key; },
   level: function(){
