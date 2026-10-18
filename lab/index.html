@@ -102,7 +102,7 @@ var GROUPS = [
   {g:'山', items:[['peakHeight','遠山的高度',0.3,2,0.05],['haze','遠景的霧氣',0,2.5,0.05],['cloudSea','谷裡的雲海',0,2.5,0.05],['foreTree','左下角的大樹',0,1,0.05]]},
   {g:'樹', items:[['treeX','左右位置（%）',30,75,1],['treeBase','離底部（%）',15,40,0.5],['treeHeight','高度（%）',25,60,1],['treeDayOpacity','白天的濃度',0.3,1,0.02],['treeNightOpacity','晚上的亮度',0.2,1,0.02],['branchSway','樹枝擺動幅度',0,12,0.5],['branchSpeed','樹枝擺動速度',0,3,0.05],['treeSway','整棵樹擺動（度）',0,3,0.1],['swaySpeed','整棵樹擺一輪幾秒',4,30,1],['companions','旁邊的樹',0,3,0.05]]},
   {g:'主角的線條（發光的那棵樹，所有畫面都會變）', look:'main', items:[['lineBoost','線條加粗（大小樹等比例）',0,2,0.05],['minLine','最細不低於（畫面 px）',0.2,1.2,0.05],['bodyAlpha','樹身底色',0,0.3,0.01],['bodyReach','樹身範圍',2,16,2]]},
-  {g:'背景樹的線條（山上的剪影、左下角大樹、晨報小圖）', look:'bg', items:[['lineRadius','線條加粗',0,10,0.1],['bodyAlpha','樹身底色',0,1,0.05],['bodyReach','樹身範圍',2,24,2]]},
+  {g:'背景樹的線條（山上的剪影、左下角大樹、晨報小圖）', look:'bg', items:[['lineBoost','線條加粗（大小樹等比例）',0,4,0.25],['minLine','最細不低於（畫面 px）',0.2,2,0.05],['bodyAlpha','樹身底色',0,1,0.05],['bodyReach','樹身範圍',2,24,2]]},
   {g:'聲音', items:[['volume','音量',0,1.5,0.05]]}
 ];
 
@@ -113,7 +113,7 @@ try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}
 try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); cloudlook = JSON.parse(localStorage.getItem('th-lab-cloudlook') || '{}'); }catch(e){}
 function save(){ try{ localStorage.setItem('th-lab-state', JSON.stringify(state)); localStorage.setItem('th-lab-tune', JSON.stringify(tune)); localStorage.setItem('th-lab-look', JSON.stringify(look)); localStorage.setItem('th-lab-bglook', JSON.stringify(bglook)); localStorage.setItem('th-lab-cloudlook', JSON.stringify(cloudlook)); }catch(e){} }
 
-var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineBoost:0, minLine:0.5, bodyAlpha:0.08, bodyReach:8 }, BG_DEF = { lineRadius:4, bodyAlpha:0, bodyReach:8 }, CLOUD_DEF = { octaves:3, tones:3, flat:1.6, edge:0.1, contrast:0.6 };
+var frame = document.getElementById('frame'), TH = null, DEF = null, LOOK_DEF = { lineBoost:0, minLine:0.5, bodyAlpha:0.08, bodyReach:8 }, BG_DEF = { lineBoost:0, minLine:0.8, bodyAlpha:0, bodyReach:8 }, CLOUD_DEF = { octaves:3, tones:3, flat:1.6, edge:0.1, contrast:0.6 };
 /* 每一組的值存在哪、原本是多少：主角線條、背景樹線條、其他動畫參數各一份 */
 function storeOf(G){ return G.look === 'main' ? look : G.look === 'bg' ? bglook : G.look === 'cloud' ? cloudlook : tune; }
 function defOf(G, key){ return G.look === 'main' ? LOOK_DEF[key] : G.look === 'bg' ? BG_DEF[key] : G.look === 'cloud' ? CLOUD_DEF[key] : DEF[key]; }

@@ -701,8 +701,23 @@ function treeSrc(){
   if(!TREE_SRC) TREE_SRC = new Promise(function(ok, no){ var im = new Image(); im.onload = function(){ ok(im); }; im.onerror = no; im.src = 'assets/cypress-line.png'; });
   return TREE_SRC;
 }
-/* 背景樹（剪影）的線條：加粗半徑、樹身底色濃度、樹身範圍。調校頁可以改，跟主角分開 */
-var BG_LOOK = { lineRadius:4, bodyAlpha:0, bodyReach:8 };
+/* 背景樹（剪影）的線條：跟主角一樣跟著樹的大小等比例，樹越小線越細。
+   深色剪影疊在亮的天空上，線太細會被天空吃掉變白，所以「最細」設得比主角高一點；最多加粗 4 */
+var BG_LOOK = { lineBoost:0, minLine:0.8, bodyAlpha:0, bodyReach:8 };
+function bgRadiusFor(px){
+  var r = Math.max(BG_LOOK.lineBoost, (BG_LOOK.minLine*790/Math.max(20, px || 80) - 3)/2);
+  return Math.max(0, Math.min(4, Math.round(r*4)/4));
+}
+/* 把一包 <image data-tint> 依各自在畫面上的高度（pxPerUnit＝每個 SVG 單位幾 px）染色、決定線條粗細 */
+function tintImages(root, pxPerUnit){
+  Array.prototype.forEach.call(root.querySelectorAll('image[data-tint]'), function(im){
+    var rad = bgRadiusFor(+im.getAttribute('height') * pxPerUnit);
+    if(im.getAttribute('data-rad') === String(rad)) return;
+    im.setAttribute('data-rad', rad);
+    tintedTree(im.getAttribute('data-tint'), rad).then(function(url){ im.setAttribute('href', url); })
+      .catch(function(){ im.setAttribute('href', 'assets/cypress-line.png'); });   /* 畫布不能用時退回原圖 */
+  });
+}
 /* 只看透明度的膨脹：先橫向、再直向取最大值（方形範圍），半徑大也很快 */
 function dilateAlpha(a, W, H, R){
   if(R <= 0) return a;
@@ -711,8 +726,9 @@ function dilateAlpha(a, W, H, R){
   for(y=0; y<H; y++) for(x=0; x<W; x++){ m = 0; for(k=-R; k<=R; k++){ var yy = y + k; if(yy >= 0 && yy < H && t[yy*W+x] > m) m = t[yy*W+x]; } o[y*W+x] = m; }
   return o;
 }
-function tintedTree(hex){
-  var key = hex + JSON.stringify(BG_LOOK);
+function tintedTree(hex, rad){
+  if(rad == null) rad = bgRadiusFor(80);
+  var key = hex + '|' + rad + JSON.stringify(BG_LOOK);
   if(!TINTED[key]) TINTED[key] = treeSrc().then(function(im){
     var W = 363, H = 790;
     var cv = document.createElement('canvas'); cv.width = W; cv.height = H;
@@ -723,7 +739,7 @@ function tintedTree(hex){
     var img = g.getImageData(0, 0, W, H), d = img.data, al = new Uint8ClampedArray(W*H);
     for(var i=0; i<W*H; i++) al[i] = d[i*4+3];
     /* 半徑可以是小數：算出前後兩個整數半徑的結果，再依小數部分混合，數值才會連續變化 */
-    var rr = Math.max(0, BG_LOOK.lineRadius), r0 = Math.floor(rr), fr = rr - r0;
+    var rr = Math.max(0, rad), r0 = Math.floor(rr), fr = rr - r0;
     var dil = dilateAlpha(al, W, H, r0);
     if(fr > 0){
       var dil1 = dilateAlpha(al, W, H, r0 + 1), mix = new Uint8ClampedArray(W*H);
@@ -840,10 +856,6 @@ function miniScene(h, tags, kind, seed){
   var holder = el('div','position:absolute;inset:0');
   holder.innerHTML = svg;
   s.appendChild(holder);
-  Array.prototype.forEach.call(holder.querySelectorAll('image[data-tint]'), function(im){
-    tintedTree(im.getAttribute('data-tint')).then(function(url){ im.setAttribute('href', url); })
-      .catch(function(){ im.setAttribute('href', 'assets/cypress-line.png'); });   /* 畫布不能用時退回原圖 */
-  });
 
   /* 主樹枝頭上的停靠點：從線稿量出來的幾根長枝的末端（樹的座標：高 790，樹幹在正中間）。
      鳥停在枝尖，身體一半在天空前面才看得到 */
@@ -873,6 +885,7 @@ function miniScene(h, tags, kind, seed){
     var k = Math.max(w/400, h/200), vh = h/k;
     var top0 = TB - TH*(1 - SINK), y0 = Math.max(172 - vh, Math.min(200 - vh, top0 - 20/k));
     svgEl.setAttribute('viewBox', '0 ' + y0.toFixed(1) + ' 400 200');
+    tintImages(holder, k);
   };
   requestAnimationFrame(function(){ fitMain(); addBirds(); });   /* 鳥等樹縮好再放，才會停在枝頭上 */
   if(window.ResizeObserver) new ResizeObserver(fitMain).observe(s);
@@ -2526,9 +2539,13 @@ function landscape(tod, kind, treeX, sub){
   var mk = function(str){
     var h = el('div','position:absolute;inset:0');
     h.innerHTML = str;
-    Array.prototype.forEach.call(h.querySelectorAll('image[data-tint]'), function(im){
-      tintedTree(im.getAttribute('data-tint')).then(function(url){ im.setAttribute('href', url); }).catch(function(){});
-    });
+    /* 放進畫面、量得到高度後才染色：SVG 是 400×870 拉滿，樹在畫面上的高度＝單位 × 容器高/870 */
+    var tries = 0, go = function(){
+      var ch = h.clientHeight;
+      if(!ch && tries++ < 60){ requestAnimationFrame(go); return; }
+      tintImages(h, (ch || 812)/870);
+    };
+    requestAnimationFrame(go);
     return h;
   };
   return { back: mk(backSvg), front: mk(svg), sea: sea, valleyY: (600 + DY*0.6) / 870, groundY: (AY + 12) / 870 };
