@@ -414,7 +414,7 @@ var WX_URL = 'https://api.open-meteo.com/v1/forecast'
            + '&longitude=' + FOREST_ORDER.map(function(f){ return FORESTS[f].lon;  }).join(',')
            + '&elevation=' + FOREST_ORDER.map(function(f){ return FORESTS[f].elev; }).join(',')
            + '&current=temperature_2m,weather_code,cloud_cover,precipitation,wind_speed_10m'
-           + '&hourly=temperature_2m,weather_code&daily=sunrise&past_days=1&forecast_days=1&timezone=Asia%2FTaipei';
+           + '&hourly=temperature_2m,weather_code,precipitation&daily=sunrise&past_days=1&forecast_days=1&timezone=Asia%2FTaipei';
 var LIVE_WX = {};
 var LIVE_MORNING = {};   /* 每座森林「最近一次日出」那個小時的天氣，晨報用 */
 /* 從昨天、今天兩個日出裡，挑還沒超過現在的那個，再找那個小時的天氣 */
@@ -436,6 +436,9 @@ function fetchWeather(){
       if(!fid || !c || c.weather_code == null) return;
       LIVE_WX[fid] = { code:c.weather_code, temp:Math.round(c.temperature_2m), cloud:c.cloud_cover, precip:c.precipitation, wind:c.wind_speed_10m, time:c.time };
       var mo = morningFrom(item); if(mo) LIVE_MORNING[fid] = mo;
+      /* 過去兩小時的雨量：有下雨、現在停了，就是「雨剛停」 */
+      var hh = item.hourly, hi = hh && hh.time ? hh.time.indexOf(c.time.slice(0, 13) + ':00') : -1;
+      if(hi >= 2 && hh.precipitation) LIVE_WX[fid].after = ((hh.precipitation[hi - 1] || 0) + (hh.precipitation[hi - 2] || 0)) >= 0.2;
     });
     /* 有用到天氣的畫面重畫；說說話頁只更新抬頭，免得打斷正在打的字 */
     if(S.screen === 0 || S.screen === 2 || S.screen === 3 || S.screen === 4 || S.screen === 7) renderScreen();
@@ -456,15 +459,24 @@ function wmo(code){
   if(code >= 95)                    return {kind:'storm',  label:'雷雨', heavy:1, sub:'storm'};
   return {kind:'cloudy', label:'多雲'};
 }
-var WX_FORCE_CODE = {clear:0, partly:2, cloudy:3, fog:45, drizzle:53, rain:63, shower:81, storm:95, snow:73};
+var WX_FORCE_CODE = {clear:0, partly:2, cloudy:3, fog:45, drizzle:53, rain:63, heavyrain:65, shower:81, storm:95, snow:73, afterrain:3};
 var TOD_TEMP = {'晨':14, '午':19, '暮':16, '夜':9};
 var TOD_KIND = {'晨':'fog', '午':'partly', '暮':'clear', '夜':'clear'};   /* 沒有資料時的時段預設 */
 /* fid：哪座森林，沒給就是「我的樹」所在的森林 */
 function nowWeather(tod, fid){
   fid = fid || myTree().forest;
-  if(WX_FORCE_CODE[WX_FORCE] != null){ var f = wmo(WX_FORCE_CODE[WX_FORCE]); f.temp = f.kind === 'snow' ? -2 : TOD_TEMP[tod]; f.src = 'force'; return f; }
+  if(WX_FORCE_CODE[WX_FORCE] != null){
+    var f = wmo(WX_FORCE_CODE[WX_FORCE]); f.temp = f.kind === 'snow' ? -2 : TOD_TEMP[tod]; f.src = 'force';
+    if(WX_FORCE === 'afterrain'){ f.after = true; f.label = '雨剛停'; }
+    return f;
+  }
   var live = LIVE_WX[fid];
-  if(live){ var w = wmo(live.code); w.temp = live.temp; w.src = 'live'; return w; }
+  if(live){
+    var w = wmo(live.code); w.temp = live.temp; w.src = 'live';
+    /* 雨剛停：過去兩小時有下雨，現在沒在下 */
+    if(live.after && w.kind !== 'rain' && w.kind !== 'storm' && w.kind !== 'snow'){ w.after = true; w.label = '雨剛停'; }
+    return w;
+  }
   return { kind:TOD_KIND[tod], label:null, temp:null, src:'default' };
 }
 /* 短短一句天氣：「14°C · 起霧」；還沒抓到資料就回空字串 */
@@ -1070,16 +1082,18 @@ function sceneFog(ctx, out){
 }
 /* 風吹過樹冠：低沉的風加上高頻的葉子沙沙聲，一陣一陣 */
 function sceneWind(ctx, out){
+  /* 風：低沉的風聲＋很輕的樹葉沙沙，跟著陣風一起起伏。
+     陣風 6–15 秒一次、慢慢起慢慢落（以前 1.4–4 秒一次又有一層高頻嘶嘶聲，聽起來像雜訊） */
   var alive = true;
-  var wind = noiseLayer(ctx, out, 'brown', 'bandpass', 500, 0.6, 0.5);
-  var leaf = noiseLayer(ctx, out, 'pink',  'highpass', 3000, 0, 0.04);
+  var wind = noiseLayer(ctx, out, 'brown', 'bandpass', 380, 0.5, 0.3);
+  var leaf = noiseLayer(ctx, out, 'pink',  'bandpass', 1400, 0.6, 0.004);
   function gust(){
     if(!alive) return;
-    var nowT = ctx.currentTime, s = Math.random();
-    wind.gain.gain.setTargetAtTime(0.28 + s*0.72, nowT, 0.8);
-    wind.filter.frequency.setTargetAtTime(350 + s*700, nowT, 1.0);
-    leaf.gain.gain.setTargetAtTime(0.02 + s*0.1, nowT, 0.6);
-    setTimeout(gust, 1400 + Math.random()*2600);
+    var nowT = ctx.currentTime, s = Math.random(), tc = 1.6 + Math.random()*2;
+    wind.gain.gain.setTargetAtTime(0.16 + s*0.42, nowT, tc);
+    wind.filter.frequency.setTargetAtTime(260 + s*320, nowT, tc*1.2);
+    leaf.gain.gain.setTargetAtTime(0.004 + s*0.028, nowT, tc);
+    setTimeout(gust, (6 + Math.random()*9)*1000);
   }
   gust();
   return function(){ alive = false; try{ wind.src.stop(); }catch(e){} try{ leaf.src.stop(); }catch(e){} };
@@ -1160,45 +1174,91 @@ function sceneOwl(ctx, out){
   setTimeout(call, 1500);
   return function(){ alive = false; };
 }
-/* 遠處的蟬：高頻的嘶聲帶著快速的顫動，一陣漸強、一陣漸弱 */
+/* 遠處的蟬：兩隻在不同方向、不同音高，輪流一陣漸強漸弱。
+   頻帶收窄（比較像蟬的「音」而不是嘶嘶聲）、濾掉最刺耳的高頻、音量壓低，聽起來在遠處 */
 function sceneCicadas(ctx, out){
-  var alive = true;
-  var src = noiseSrc(ctx, 'pink'), bp = ctx.createBiquadFilter(), am = ctx.createGain(), swell = ctx.createGain();
-  var lfo = ctx.createOscillator(), depth = ctx.createGain();
-  bp.type = 'bandpass'; bp.frequency.value = 4800; bp.Q.value = 3;
-  am.gain.value = 0.5; lfo.frequency.value = 62; depth.gain.value = 0.45;
-  lfo.connect(depth); depth.connect(am.gain);
-  swell.gain.value = 0.0001;
-  src.connect(bp); bp.connect(am); am.connect(swell); swell.connect(out);
-  src.start(); lfo.start();
-  function cycle(){
-    if(!alive) return;
-    swell.gain.setTargetAtTime(1.2 + Math.random()*0.8, ctx.currentTime, 1.6);
-    setTimeout(function(){ if(alive) swell.gain.setTargetAtTime(0.12, ctx.currentTime, 1.4); }, 4000 + Math.random()*3000);
-    setTimeout(cycle, 9000 + Math.random()*5000);
-  }
-  cycle();
-  return function(){ alive = false; try{ src.stop(); }catch(e){} try{ lfo.stop(); }catch(e){} };
+  var alive = true, voices = [];
+  [{f:4200, rate:48, pan:-0.4}, {f:5100, rate:56, pan:0.5}].forEach(function(v){
+    var src = noiseSrc(ctx, 'pink'), bp = ctx.createBiquadFilter(), lp = ctx.createBiquadFilter(), am = ctx.createGain(), swell = ctx.createGain();
+    var lfo = ctx.createOscillator(), depth = ctx.createGain();
+    bp.type = 'bandpass'; bp.frequency.value = v.f; bp.Q.value = 7;
+    lp.type = 'lowpass'; lp.frequency.value = 5200;
+    am.gain.value = 0.6; lfo.frequency.value = v.rate; depth.gain.value = 0.3;
+    lfo.connect(depth); depth.connect(am.gain);
+    swell.gain.value = 0.0001;
+    src.connect(bp); bp.connect(lp); lp.connect(am); am.connect(swell); toOut(ctx, swell, out, v.pan);
+    src.start(); lfo.start();
+    voices.push({ src:src, lfo:lfo, swell:swell });
+  });
+  voices.forEach(function(v, i){
+    setTimeout(function run(){
+      if(!alive) return;
+      v.swell.gain.setTargetAtTime(0.35 + Math.random()*0.3, ctx.currentTime, 2.5);
+      setTimeout(function(){ if(alive) v.swell.gain.setTargetAtTime(0.03, ctx.currentTime, 2.5); }, 5000 + Math.random()*4000);
+      setTimeout(run, 13000 + Math.random()*8000);
+    }, i*4000);
+  });
+  return function(){ alive = false; voices.forEach(function(v){ try{ v.src.stop(); }catch(e){} try{ v.lfo.stop(); }catch(e){} }); };
 }
-/* 雨聲：持續的沙沙聲＋低頻的雨幕，加上密密的雨滴 */
-function sceneRain(ctx, out){
-  var alive = true;
-  var hiss = noiseLayer(ctx, out, 'pink',  'bandpass', 1800, 0.5, 0.58);
-  var low  = noiseLayer(ctx, out, 'brown', 'lowpass',  500,  0,   0.17);
-  function drop(){
-    if(!alive) return;
-    var tt = ctx.currentTime + 0.01, o = ctx.createOscillator(), e = ctx.createGain(), f = 2200 + Math.random()*3200;
+/* 蟬只在夏天叫；阿里山這種高山比平地短，抓 6–8 月（網址 ?month=7 可以指定月份來試） */
+function cicadaSeason(){
+  var m = +(QS.get('month') || (new Date().getMonth() + 1));
+  return m >= 6 && m <= 8;
+}
+/* 一小段雜訊，給雨點、葉子輕響共用 */
+var BURST_BUF = null;
+function burstBuf(ctx){
+  if(BURST_BUF && BURST_BUF.sampleRate === ctx.sampleRate) return BURST_BUF;
+  var n = Math.round(ctx.sampleRate*0.12), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0);
+  for(var i=0; i<n; i++) d[i] = Math.random()*2 - 1;
+  return (BURST_BUF = b);
+}
+/* 雨點打在葉子上：很短的一點雜訊，過濾成柔和的「噗、嗒」（以前用電子音的嗶嗶聲） */
+function patter(ctx, out, f, q, vol, decay, pan){
+  var tt = ctx.currentTime + 0.01, src = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), e = ctx.createGain();
+  src.buffer = burstBuf(ctx); src.playbackRate.value = 0.7 + Math.random()*0.6;
+  bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+  e.gain.setValueAtTime(0.0001, tt); e.gain.exponentialRampToValueAtTime(vol, tt + 0.003); e.gain.exponentialRampToValueAtTime(0.0001, tt + decay);
+  src.connect(bp); bp.connect(e); toOut(ctx, e, out, pan);
+  src.start(tt, Math.random()*0.05); src.stop(tt + decay + 0.02);
+}
+/* 雨：主體是柔和的低頻雨幕，慢慢起伏；上面零星的雨點。level：0 毛毛雨、1 雨、2 大雨 */
+function rainScene(level){
+  var P = [
+    { wash:850,  washG:.24, hiss:0,    hissG:0,   rate:[3, 6],   vol:[.012, .024], f:[1400, 2600], decay:[.03, .06] },
+    { wash:1150, washG:.38, hiss:2600, hissG:.05, rate:[9, 16],  vol:[.014, .032], f:[1100, 3000], decay:[.025, .05] },
+    { wash:1500, washG:.56, hiss:3200, hissG:.1,  rate:[22, 38], vol:[.014, .036], f:[900, 3200],  decay:[.02, .045] }
+  ][level];
+  return function(ctx, out){
+    var alive = true, R = function(a){ return a[0] + Math.random()*(a[1] - a[0]); };
+    var wash = noiseLayer(ctx, out, 'brown', 'lowpass', P.wash, 0.5, P.washG);
+    var hiss = P.hiss ? noiseLayer(ctx, out, 'pink', 'lowpass', P.hiss, 0.4, P.hissG) : null;
+    (function wander(){ if(!alive) return; wash.gain.gain.setTargetAtTime(P.washG*(0.8 + Math.random()*0.35), ctx.currentTime, 2.5); setTimeout(wander, 3000 + Math.random()*4000); })();
+    (function drop(){ if(!alive) return; patter(ctx, out, R(P.f), 1.2 + Math.random()*2, R(P.vol), R(P.decay), Math.random()*1.8 - 0.9); setTimeout(drop, 1000/R(P.rate)); })();
+    return function(){ alive = false; try{ wash.src.stop(); }catch(e){} if(hiss){ try{ hiss.src.stop(); }catch(e){} } };
+  };
+}
+/* 雨後：葉子上的水一滴一滴落下。五個滴水點各有自己的節奏和音高，越滴越慢；底下一層很輕的濕潤空氣 */
+function sceneDrips(ctx, out){
+  var alive = true, bed = noiseLayer(ctx, out, 'brown', 'lowpass', 600, 0.5, 0.07);
+  function plink(f, vol, pan){
+    var tt = ctx.currentTime + 0.01, o = ctx.createOscillator(), e = ctx.createGain();
     o.type = 'sine';
-    o.frequency.setValueAtTime(f, tt); o.frequency.exponentialRampToValueAtTime(f*0.6, tt + 0.02);
-    e.gain.setValueAtTime(0.0001, tt);
-    e.gain.exponentialRampToValueAtTime(0.02 + Math.random()*0.035, tt + 0.002);
-    e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.03);
-    o.connect(e); toOut(ctx, e, out, Math.random()*1.8 - 0.9);
-    o.start(tt); o.stop(tt + 0.04);
-    setTimeout(drop, 25 + Math.random()*90);
+    o.frequency.setValueAtTime(f, tt); o.frequency.exponentialRampToValueAtTime(f*1.9, tt + 0.045);   /* 水滴的音高會往上滑 */
+    e.gain.setValueAtTime(0.0001, tt); e.gain.exponentialRampToValueAtTime(vol, tt + 0.004); e.gain.exponentialRampToValueAtTime(0.0001, tt + 0.09);
+    o.connect(e); toOut(ctx, e, out, pan); o.start(tt); o.stop(tt + 0.1);
+    patter(ctx, out, 2400 + Math.random()*1200, 2, vol*0.35, 0.03, pan);                              /* 落在葉子上的一點輕響 */
   }
-  drop();
-  return function(){ alive = false; try{ hiss.src.stop(); }catch(e){} try{ low.src.stop(); }catch(e){} };
+  [0,1,2,3,4].forEach(function(i){
+    var spot = { f:900 + Math.random()*900, pan:-0.8 + i*0.4 + (Math.random() - 0.5)*0.2, every:0.9 + Math.random()*1.6, vol:0.05 + Math.random()*0.05 };
+    setTimeout(function tick(){
+      if(!alive) return;
+      plink(spot.f*(0.97 + Math.random()*0.06), spot.vol*(0.7 + Math.random()*0.5), spot.pan);
+      spot.every = Math.min(4, spot.every*1.01);
+      setTimeout(tick, spot.every*1000*(0.7 + Math.random()*0.6));
+    }, i*350 + Math.random()*400);
+  });
+  return function(){ alive = false; try{ bed.src.stop(); }catch(e){} };
 }
 /* 雷聲：由畫面上的閃電觸發（隔幾秒才傳來，像真的有距離） */
 var THUNDER = null;
@@ -1234,18 +1294,26 @@ var SOUNDSCAPES = {
   fog:sceneFog, wind:sceneWind, birds:sceneBirds,
   /* 即時風景：跟著山上的時段 */
   'scene-晨': layered([[sceneFog, 0.8], [sceneBirds, 0.7], [sceneWind, 0.35]]),   /* 霧滴、山雀（近）、風很輕 */
-  'scene-午': layered([[sceneCicadas, 1], [sceneWind, 0.6]]),                    /* 蟬（遠）、風吹過樹冠 */
+  'scene-午': layered([[sceneCicadas, 1], [sceneWind, 0.6]]),                    /* 夏天：蟬（遠）、風吹過樹冠 */
+  'scene-午-off': layered([[sceneBirds, 0.45], [sceneWind, 0.7]]),              /* 不是夏天：鳥、風吹過樹冠 */
   'scene-暮': layered([[sceneWind, 0.8], [sceneBirds, 0.6]]),                    /* 晚風、山雀歸巢 */
   'scene-夜': layered([[sceneCrickets, 1], [sceneOwl, 1]]),                      /* 蟲鳴、貓頭鷹（遠） */
   /* 天氣蓋過時段：下雨、雷雨、下雪 */
-  'wx-rain':  layered([[sceneRain, 1], [sceneWind, 0.35]]),
-  'wx-storm': layered([[sceneRain, 1.2], [sceneWind, 0.6], [sceneThunder, 1]]),
+  'wx-drizzle':    layered([[rainScene(0), 1], [sceneWind, 0.25]]),
+  'wx-rain':       layered([[rainScene(1), 1], [sceneWind, 0.3]]),
+  'wx-rain-heavy': layered([[rainScene(2), 1], [sceneWind, 0.45]]),
+  'wx-storm':      layered([[rainScene(2), 1.1], [sceneWind, 0.6], [sceneThunder, 1]]),
+  /* 雨剛停：葉子滴水；白天鳥慢慢回來，晚上蟲開始叫 */
+  'after-day':     layered([[sceneDrips, 1], [sceneBirds, 0.35], [sceneWind, 0.2]]),
+  'after-night':   layered([[sceneDrips, 1], [sceneCrickets, 0.45]]),
   'wx-snow':  layered([[sceneWind, 0.45]])
 };
 function sceneKey(tod, w){
   if(w.kind === 'storm') return 'wx-storm';
-  if(w.kind === 'rain')  return 'wx-rain';
+  if(w.kind === 'rain')  return w.sub === 'drizzle' ? 'wx-drizzle' : (w.heavy >= 1 ? 'wx-rain-heavy' : 'wx-rain');
   if(w.kind === 'snow')  return 'wx-snow';
+  if(w.after)            return tod === '夜' ? 'after-night' : 'after-day';
+  if(tod === '午' && !cicadaSeason()) return 'scene-午-off';
   return 'scene-' + tod;
 }
 function playSound(key){
@@ -2527,6 +2595,7 @@ function screen7(){
   var dim     = Math.min(0.9, ({cloudy:0.16, rain:0.3, storm:0.42, snow:0.12, fog:0.04}[w.kind] || 0) * TUNE.dim);
   var fogAmt  = Math.min(1, ({clear: tod === '晨' ? 0.2 : 0.06, partly:0.14, cloudy:0.22, fog:0.6, rain:0.3, storm:0.25, snow:0.3}[w.kind]) * TUNE.fog);
   var clouds  = {partly:2, cloudy:4, rain:4, storm:4, snow:3}[w.kind] || 0;
+  if(w.after) fogAmt = Math.min(1, fogAmt + 0.15);   /* 雨剛停：地面濕、霧多一點 */
 
   if(starAmt > 0) mountSky(root, starAmt, w.kind === 'clear');
   if(dim > 0) root.appendChild(el('div','position:absolute;inset:0;background:rgba(18,26,22,'+dim+')'));
