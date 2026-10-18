@@ -547,10 +547,10 @@ function canvasUrl(cv){
   });
 }
 /* tint：把整棵樹染成指定顏色（白天的主角用跟風景同一組的深綠）；沒給就是原本的淺色線稿 */
-/* 線條粗細依樹在畫面上的大小決定：目標是畫面上的線大約 lineWidth px。
-   原圖線條約 3 原圖像素；樹畫得越小越需要加粗，大樹（例如首頁、分享卡那麼大）幾乎不加 */
+/* 線條跟著樹的大小等比例：樹畫得越小，線就越細（跟原圖縮小一樣）。
+   lineBoost 是所有樹一起加粗多少（原圖像素）；只有樹小到線會細過 minLine px 時才補一點，免得線條斷掉不見 */
 function lineRadiusFor(h){
-  var r = (TREE_LOOK.lineWidth*790/Math.max(60, h || 200) - 3)/2;
+  var r = Math.max(TREE_LOOK.lineBoost, (TREE_LOOK.minLine*790/Math.max(40, h || 200) - 3)/2);
   return Math.max(0, Math.min(2.5, Math.round(r*10)/10));
 }
 function fullTreeUrl(tint, rad){
@@ -606,7 +606,7 @@ function fullTreeUrl(tint, rad){
   return FULL_CACHE[key];
 }
 /* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
-var TREE_LOOK = { lineWidth:1.15, bodyReach:8, bodyAlpha:0.08 };   /* lineWidth：畫面上的線大約幾 px，不管樹畫多大 */
+var TREE_LOOK = { lineBoost:0, minLine:0.5, bodyReach:8, bodyAlpha:0.08 };   /* 線條等比例縮放，見 lineRadiusFor */
 /* 樹枝在風裡擺：把樹切成小格，每一格依位置位移——樹幹附近不動，越往外、越往上的枝尖動得越多；
    整體被風往同一邊推，不同高度的枝層錯開一點時間（風一層層吹過），枝尖再帶一點上下晃，偶爾一陣大一點的風。
    不是整棵樹以樹根為軸在搖 */
