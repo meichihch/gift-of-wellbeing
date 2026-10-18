@@ -1597,9 +1597,13 @@ function quizCard(onDone){
     var st = 'display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:14px 16px 14px 18px;border-radius:20px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.06);color:'+C.text+';font-size:14.5px;cursor:pointer;text-align:left';
     var b = el('button', st);
     b.appendChild(el('span', null, o.label));
-    var arrow = el('span','color:'+C.text3+';font-size:14px;flex-shrink:0','↗');
+    /* 水平箭頭：選這個、往下一題走（斜上箭頭像是開外部連結）。移上去時往右輕推一點、變亮綠 */
+    var arrowSt = 'color:'+C.text3+';font-size:15px;flex-shrink:0;transition:transform .2s ease,color .2s ease';
+    var arrow = el('span', arrowSt, '→');
     arrow.setAttribute('aria-hidden','true');
     b.appendChild(arrow);
+    b.addEventListener('mouseenter', function(){ arrow.style.transform = 'translateX(3px)'; arrow.style.color = C.lime; });
+    b.addEventListener('mouseleave', function(){ arrow.style.transform = ''; arrow.style.color = C.text3; });
     b.onclick = function(){
       S.quizPick[S.quizStep] = o;
       if(S.quizStep < 2){ S.quizStep++; }
