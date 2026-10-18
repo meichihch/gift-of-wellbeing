@@ -168,9 +168,9 @@ var S = {
   toast:'', replyCount:0, sceneMuted:false,
   /* 每棵樹各自一段對話；阿檜這段是示範用的舊對話 */
   chats:{ t28:[
-    {isTree:true, hasImg:true, text:'早安，今天山上起霧了，空氣很好。給你看看。', time:'06:12 · 晨報'},
+    {isTree:true, hasImg:true, morning:'alishan', text:'', time:''},   /* 文字、時間、山景都在畫的時候依今天日出的天氣決定 */
     {isMe:true, text:'今天好沒動力起床，最近的事一件接著一件來。', time:'06:47'},
-    {isTree:true, text:'事情一件接一件，真的會累。跟你說個我的事：我被雷劈過兩次，樹幹裡空了一塊，到現在都沒長回來。不過我還是站得好好的，那個洞裡現在還住了一窩山雀。', time:'06:12'}
+    {isTree:true, text:'事情一件接一件，真的會累。跟你說個我的事：我被雷劈過兩次，樹幹裡空了一塊，到現在都沒長回來。不過我還是站得好好的，那個洞裡現在還住了一窩山雀。', time:'06:48'}
   ]}
 };
 function chat(){ return S.chats[S.myTree] || (S.chats[S.myTree] = []); }
@@ -1273,13 +1273,20 @@ function toggleSound(key){ if(SND.key === key) stopSound(); else playSound(key);
 function msgNode(m){
   if(m.isNote) return el('div','align-self:center;font-size:11px;color:'+C.text3+';padding:2px 0', m.text);
 
-  var wrap, bub;
+  var wrap, bub, mw = null;
+  if(m.morning){
+    /* 早上那則：依今天日出時的天氣寫，跟晨報一致 */
+    mw = morningWeather(m.morning);
+    m.text = '早安，' + (MORNING_GLANCE[mw.kind] || MORNING_GLANCE.fog) + '給你看看。';
+    m.time = mw.sunrise + ' · 晨報';
+  }
   if(m.isTree){
     wrap = el('div','max-width:84%;align-self:flex-start');
     bub  = el('div', GLASS + ';border-radius:6px 22px 22px 22px;padding:13px 16px;font-size:15px;line-height:1.75;color:'+C.text, m.text);
     if(m.hasImg){
       /* 這是畫出來的山景，不是影像：標籤只寫那時的天氣，不宣稱「即時影像」 */
-      var sc = miniScene(132, ['早上 06:10 · 起霧 · 14°C']);
+      var sc = mw ? miniScene(132, ['早上 ' + mw.sunrise + ' · ' + mw.label + ' · ' + mw.temp + '°C'], mw.kind, FOREST_ORDER.indexOf(m.morning) + 1)
+                  : miniScene(132, ['早上 06:10 · 起霧 · 14°C']);
       sc.style.marginTop = '12px';
       bub.appendChild(sc);
     }
@@ -1326,12 +1333,51 @@ function setThinking(on){
 }
 function chipReply(v){
   if(v === '說說今天')     return '好，今天過得怎麼樣？想到什麼就說什麼。';
-  if(v === '只是想來坐坐') return '好啊，坐吧。'+wxLine()+'不說話也沒關係。';
-  if(v.indexOf('累')  >= 0) return '辛苦了。'+wxLine()+'累的話就少說一點，坐一下也好。';
-  if(v.indexOf('開心')>= 0) return myTree().happy;
-  if(v.indexOf('樹洞')>= 0) return '好，我聽到了。還有想說的，就繼續說。';
+  if(v === '只是想來坐坐') return '好啊，坐吧。' + wxSentence() + '不說話也沒關係。';
+  if(v === '說個開心的事') return myTree().happy;
   return null;
 }
+/* 天氣一句話（完整的句子，不硬塞進別的句子裡） */
+function wxSentence(){
+  var tod = curTod(), w = nowWeather(tod), f = myForest().short;
+  var k = w.src === 'default' ? 'fog' : w.kind;
+  return ({ fog: f + '起霧了，很安靜。', rain: f + '在下雨。', storm: f + '在打雷下雨。', snow: f + '下雪了。',
+            cloudy: f + '雲很厚。', partly: f + '有幾朵雲。',
+            clear: tod === '夜' ? f + '今晚看得到星星。' : f + '今天很亮。' })[k] || '';
+}
+/* 依話題回：問山上今天、問樹自己、打招呼、道謝、累了、心情不好、開心的事、其他問題、其他 */
+function treeReply(v){
+  var tr = myTree(), f = myForest(), tod = curTod(), n = S.replyCount;
+  var has = function(){ for(var i=0; i<arguments.length; i++) if(v.indexOf(arguments[i]) >= 0) return true; return false; };
+  var pk = function(arr){ return arr[n % arr.length]; };
+  if(has('幾歲', '多老', '年紀', '多大了', '活多久')) return '我' + (tr.age.indexOf('約') === 0 ? '大概 ' + tr.age.replace('約 ', '') : ' ' + tr.age) + '了。' + bare(tr.line);
+  if(has('你是誰', '你叫什麼', '介紹', '你是什麼樹')) return '我是' + tr.name + '，' + f.short + f.name + '的' + tr.species + '，' + tr.age + '。' + bare(tr.line);
+  if(has('在哪', '哪裡', '怎麼去', '去看你', '怎麼找到你')) return '我在' + f.place + '的' + f.short + f.name + '，' + (tr.elev || f.range).replace(/m$/, ' 公尺') + '。想來的話，挑個好天氣的週末，我在這裡等你。';
+  if(has('早安', '早啊', '早上好')) return '早安。' + wxSentence() + (tod === '晨' ? '你也起得很早。' : '今天過得還好嗎？');
+  if(has('晚安', '要睡了', '去睡')) return '晚安。' + (tod === '夜' ? '山上也睡了，只剩蟲在叫。' : '早點休息。') + '明天見。';
+  if(has('你好', '嗨', 'hi', 'Hi', '哈囉')) return '嗨，' + wxSentence() + '想聊什麼都可以。';
+  if(has('謝謝', '感謝', '謝啦')) return pk(['不用客氣。想說的時候再來。', '不客氣，我也很高興你來。']);
+  if(has('累', '疲', '睏', '沒力')) return pk(['辛苦了。累的話就少說一點，坐一下也好。', '今天先這樣就好。休息不是偷懶。']);
+  if(has('煩', '難過', '壓力', '不開心', '想哭', '焦慮', '低落', '生氣', '委屈')) return pk(['聽起來不輕鬆。想說多少就說多少，我聽著。', '嗯，這種時候說出來就好，不用急著想辦法。']);
+  if(has('開心', '好消息', '高興', '成功', '終於', '太好了')) return pk(['真好，再多說一點給我聽。', '聽了我也跟著高興。後來呢？']);
+  /* 心情的話先接住，最後才看是不是在問山上的事（「今天好累」不是在問天氣） */
+  if(has('山上', '今天', '發生', '最近', '天氣', '下雨', '下雪', '冷不冷', '熱不熱', '那邊', '你那裡')) return mountainNews();
+  if(/[？?]$/.test(v) || has('嗎', '什麼', '怎麼', '為什麼', '要不要')) return pk(['這個我不太確定，我只是一棵樹，看得到的就是這片山。不過你想聊，我很樂意聽。', '我答不太出來。你自己怎麼想？']);
+  return pk(['嗯，我在聽。不用整理好再說，想到哪說到哪。', '好，我記下來了。你慢慢說，不用急。', '我在這裡，你繼續說。']);
+}
+/* 山上今天的事：現在的天氣＋林子裡的樣子，再問回去 */
+function mountainNews(){
+  var tr = myTree(), f = myForest(), tod = curTod(), w = nowWeather(tod);
+  var k = w.src === 'default' ? 'fog' : w.kind;
+  var when = tod === '夜' ? '今晚' : tod === '暮' ? '傍晚' : '今天';
+  var now = w.src === 'default' ? f.short + when + '起霧，很安靜。' : f.short + when + w.label + '，' + w.temp + ' 度。';
+  var group = k === 'snow' ? null : ({clear:'bright', partly:'bright', cloudy:'grey', fog:'soft'}[k] || 'wet');
+  var scene = group ? pick(MORNING_FOREST[tr.forest][group], S.replyCount) : pick(MORNING_SNOW, S.replyCount);
+  return now + scene + '你那邊呢？';
+}
+/* 早上那則訊息的開頭一句，跟今天日出時的天氣一致 */
+var MORNING_GLANCE = { fog:'今天山上起霧了，空氣很好。', clear:'今天山上天氣很好，看得很遠。', partly:'今天山上有太陽，也有一點雲。',
+                       cloudy:'今天山上雲比較厚，光線很柔。', rain:'今天山上在下雨，葉子都在滴水。', storm:'今天山上在打雷，雨很大，我站得很穩。', snow:'今天山上下雪了，樹枝白白的。' };
 /* 樹先開口：自我介紹＋它那座山現在的天氣 */
 function greeting(tree){
   var f = FORESTS[tree.forest], s = wxShort(tree.forest);
@@ -1360,16 +1406,11 @@ function send(text){
   if(S.chips){ S.chips = null; if(ui.chips){ ui.chips.remove(); ui.chips = null; } }
 
   pushMsg({isMe:true, text:v, time:now()});
-  pushMsg({isNote:true, text:'收到了'});
   setThinking(true);
 
   t(function(){
     setThinking(false);
-    var pool = [
-      '嗯，我聽著。'+wxLine()+'不用整理好再說，想到哪，說到哪就可以。',
-      '好，我記下來了。'+wxLine()+'你慢慢說，不用急。'
-    ];
-    var r = chipReply(v) || pool[S.replyCount % pool.length];
+    var r = chipReply(v) || treeReply(v);
     S.replyCount++; S.gained += 1;
     pushMsg({isTree:true, text:r, time:now()});
     /* 第一次對話：回完第一句之後，順口問要不要收晨報 */
