@@ -313,6 +313,7 @@ var TUNE = {
   lightningEvery:10.5, flash:1,
   treeX:59, treeHeight:42, treeNightOpacity:0.62, treeSway:0, swaySpeed:14, companions:1,
   cloudSea:1, haze:1, peakHeight:1, foreTree:0.9, treeBase:25, treeDayOpacity:0.95, cloudAmount:1, morphSpeed:1,
+  branchSway:4, branchSpeed:1,   /* 樹枝擺動：枝尖最多移動幾個原圖像素、速度倍數 */
   volume:1
 };
 var TUNE_DEFAULT = JSON.parse(JSON.stringify(TUNE));
@@ -594,9 +595,43 @@ function fullTreeUrl(tint){
 }
 /* 主角（發光的線稿樹）：線條加粗的半徑（原圖像素）、樹身擴多大、樹身多淡；調校頁可以改。背景樹另外看 BG_LOOK */
 var TREE_LOOK = { lineRadius:0.9, bodyReach:8, bodyAlpha:0.08 };   /* 0.9 跟以前的 1 看起來差不多 */
-function fullTree(style, tint){
+/* 樹枝在風裡擺：把樹切成小格，每一格依位置位移——樹幹附近不動，越往外、越往上的枝尖動得越多；
+   整體被風往同一邊推，不同高度的枝層錯開一點時間（風一層層吹過），枝尖再帶一點上下晃，偶爾一陣大一點的風。
+   不是整棵樹以樹根為軸在搖 */
+function swayCanvas(wrap, url){
+  var cv = document.createElement('canvas');
+  cv.setAttribute('style','position:absolute;inset:0;width:100%;height:100%');
+  wrap.innerHTML = ''; wrap.appendChild(cv);
+  var im = new Image(); im.src = url;
+  var still = reduceMotion(), COLS = 14, ROWS = 44, W = 363, H = 790, AX = 181.5, ph = Math.random()*20;
+  var cw = W/COLS, ch = H/ROWS, OV = 0.5;
+  function frame(nowT){
+    if(!cv.isConnected) return;
+    var dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if(!im.complete || !im.naturalWidth || !w || !h){ requestAnimationFrame(frame); return; }
+    if(cv.width !== Math.round(w*dpr) || cv.height !== Math.round(h*dpr)){ cv.width = Math.round(w*dpr); cv.height = Math.round(h*dpr); }
+    var g = cv.getContext('2d'), sx = cv.width/W, sy = cv.height/H;
+    g.setTransform(1,0,0,1,0,0); g.clearRect(0, 0, cv.width, cv.height);
+    var A = still ? 0 : TUNE.branchSway, t = nowT/1000*TUNE.branchSpeed + ph;
+    var gust = Math.max(0, Math.sin(t*0.23)*Math.sin(t*0.37 + 1.3));                       /* 偶爾一陣大一點的風 */
+    for(var r=0; r<ROWS; r++){
+      var cy = (r + 0.5)*ch, hF = Math.max(0, Math.min(1, (690 - cy)/690));             /* 樹幹（最下面）不動，越高越活 */
+      var wave = Math.sin(t*1.6 - cy*0.012);                                             /* 風一層層往上吹過 */
+      for(var c=0; c<COLS; c++){
+        var cx = (c + 0.5)*cw, d = Math.abs(cx - AX)/AX, wgt = A ? Math.pow(d, 1.25)*(0.35 + 0.65*hF)*(hF > 0 ? 1 : 0) : 0;
+        var dx = A*wgt*(0.55*wave + 0.6*gust + 0.22*Math.sin(t*3.1 + cx*0.05 + cy*0.03));
+        var dy = A*0.4*wgt*Math.sin(t*2.2 + cy*0.02 + cx*0.04);
+        g.drawImage(im, c*cw, r*ch, cw + OV, ch + OV, (c*cw + dx)*sx, (r*ch + dy)*sy, (cw + OV)*sx, (ch + OV)*sy);
+      }
+    }
+    if(!still) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+function fullTree(style, tint, sway){
   var wrap = el('div','position:absolute;pointer-events:none;aspect-ratio:'+(TREE_AXIS_PX*2)+' / 790;' + style);
   var putImg = function(url){
+    if(sway){ swayCanvas(wrap, url); return; }
     wrap.innerHTML = '';
     var img = document.createElement('img');
     img.src = url; img.alt = '';
@@ -928,9 +963,9 @@ function forestTeaser(ids){
   /* 樹高是「這一塊扣掉名牌要的空間」的比例：螢幕矮，整片森林跟著縮，最高那張名牌也不會被切掉 */
   var HEAD = 96;
   var hOf = function(f){ return 'calc((100% - ' + HEAD + 'px) * ' + f + ')'; };
-  var plant = function(x, f, style){
+  var plant = function(x, f, style, sway){
     var w = el('div','position:absolute;left:'+x+'%;bottom:'+GROUND+'px;height:'+hOf(f)+';transform:translateX(-50%)');
-    w.appendChild(fullTree('position:relative;display:block;height:100%;' + style));
+    w.appendChild(fullTree('position:relative;display:block;height:100%;' + style, null, sway));
     st.appendChild(w);
   };
   /* 後排 */
@@ -941,7 +976,7 @@ function forestTeaser(ids){
   var front = [[19, .78], [52, 1], [83, .72]];
   ids.forEach(function(id, i){
     var tr = TREES[id], x = front[i][0], f = front[i][1];
-    plant(x, f, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))');
+    plant(x, f, 'opacity:.9;filter:drop-shadow(0 0 12px rgba(123,227,111,.35))', true);
     var topAt = 'calc(' + (GROUND - 6) + 'px + ' + hOf(f) + ')';   /* 樹梢的高度（從底部算） */
     var delay = (-i * 1.6) + 's';
     st.appendChild(el('div','position:absolute;left:'+x+'%;bottom:'+topAt+';width:6px;height:6px;border-radius:50%;background:'+C.lime+';box-shadow:0 0 8px rgba(123,227,111,.8);animation:th-dot 12s ease-in-out '+delay+' infinite'));
@@ -965,8 +1000,8 @@ function arrivalStage(){
   groundRing(st, GROUND, 300, 70);
   /* 樹的高度跟著螢幕走：約是整個 app 高度的 42%，最高 340px，上面至少留 24px */
   var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;height:min(340px, 42cqh, calc(100% - '+(GROUND + 34 + 24)+'px));transform:translateX(-50%)');
-  var sway = el('div','height:100%;transform-origin:50% 100%;animation:th-sway 14s ease-in-out infinite');
-  sway.appendChild(fullTree('position:relative;display:block;height:100%;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))'));
+  var sway = el('div','height:100%');
+  sway.appendChild(fullTree('position:relative;display:block;height:100%;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))', null, true));
   holder.appendChild(sway); st.appendChild(holder);
   return st;
 }
@@ -1909,7 +1944,7 @@ function revealView(ctx){
     var card = el('div', CARD + ';flex:0 0 '+(multi ? '86%' : '100%')+';scroll-snap-align:start;overflow:hidden;padding-bottom:18px');
     card.setAttribute('data-tree', tree.id);
     var stage = glowStage(214);
-    stage.appendChild(fullTree('left:50%;bottom:44px;height:164px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.5))'));
+    stage.appendChild(fullTree('left:50%;bottom:44px;height:164px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.5))', null, true));
     stage.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:44px;height:44px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap;box-shadow:0 0 24px rgba(123,227,111,.6)', tree.num));
     card.appendChild(stage);
     var body = el('div','padding:4px 18px 0');
@@ -2055,7 +2090,7 @@ function screen0(){
     pbb.setAttribute('aria-label','回去重選');
     pb.appendChild(pbb); root.appendChild(pb);
     var stg = glowStage(240);
-    stg.appendChild(fullTree('left:50%;bottom:44px;height:180px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.45))'));
+    stg.appendChild(fullTree('left:50%;bottom:44px;height:180px;transform:translateX(-50%);filter:drop-shadow(0 0 16px rgba(123,227,111,.45))', null, true));
     stg.appendChild(el('div','position:absolute;left:50%;bottom:6px;transform:translateX(-50%);min-width:44px;height:44px;padding:0 12px;border-radius:999px;background:'+C.lime+';color:'+C.ink+';font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;white-space:nowrap', tree.num));
     root.appendChild(stg);
     root.appendChild(el('div','font-size:13px;color:'+C.text2+';text-align:center;margin-top:4px', '你選了' + FORESTS[tree.forest].short + '的' + tree.name));
@@ -2721,7 +2756,7 @@ function screen7(){
   var treeSway = el('div','height:100%;transform-origin:50% 100%;--sway:'+TUNE.treeSway+'deg;' + (TUNE.treeSway > 0 ? 'animation:th-swayv '+TUNE.swaySpeed+'s ease-in-out infinite' : ''));
   /* 白天的主樹染成跟風景同一組的深綠（以前是把白線稿壓暗，偏藍灰、跟山不搭）；晚上維持發光的淺色線稿 */
   var heroTint = w.kind === 'snow' ? '#22302A' : HERO_TINT[tod];
-  treeSway.appendChild(fullTree('position:relative;display:block;height:100%;' + (night ? 'opacity:'+TUNE.treeNightOpacity+';filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:'+TUNE.treeDayOpacity), night ? null : heroTint));
+  treeSway.appendChild(fullTree('position:relative;display:block;height:100%;' + (night ? 'opacity:'+TUNE.treeNightOpacity+';filter:drop-shadow(0 0 10px rgba(123,227,111,.22))' : 'opacity:'+TUNE.treeDayOpacity), night ? null : heroTint, true));
   treeBox.appendChild(treeSway); root.appendChild(treeBox);
   root.appendChild(land.front);
   /* 主樹腳邊的地面霧：最靠近，飄得最快，遠近才有層次 */
