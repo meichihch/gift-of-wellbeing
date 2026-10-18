@@ -20,8 +20,7 @@
   @keyframes th-rings{0%,100%{transform:scale(.96) rotate(-.4deg)}33%,50%{transform:scale(1.04) rotate(.4deg)}}
   @keyframes th-glow{0%,100%{opacity:.7}50%{opacity:1}}
   /* 地上的光圈跟呼吸練習同一個節奏：吸氣 4 秒、停 2 秒、吐氣 6 秒，一輪 12 秒 */
-  @keyframes th-ring{0%,100%{transform:translateX(-50%) scale(.84);opacity:.35}33%,50%{transform:translateX(-50%) scale(1.12);opacity:1}}
-  @keyframes th-ripple{0%,50%{transform:translateX(-50%) scale(1.08);opacity:0}54%{opacity:.75}100%{transform:translateX(-50%) scale(1.8);opacity:0}}
+  @keyframes th-ripple{0%{transform:translateX(-50%) scale(.45);opacity:0}12%{opacity:.7}100%{transform:translateX(-50%) scale(1.5);opacity:0}}
   @keyframes th-halo{0%,100%{transform:translate(-50%,-50%) scale(.92);opacity:.6}33%,50%{transform:translate(-50%,-50%) scale(1.06);opacity:1}}
   @keyframes th-sway{0%,100%{transform:rotate(-.6deg)}50%{transform:rotate(.6deg)}}
   @keyframes th-swayv{0%,100%{transform:rotate(calc(var(--sway,0deg) * -1))}50%{transform:rotate(var(--sway,0deg))}}
@@ -960,11 +959,12 @@ function glowStage(h){
   groundRing(stage, 24, 270, 62);
   return stage;
 }
-/* 地上的光圈：跟著呼吸一縮一放，吐氣時再往外漾開一圈 */
+/* 地上的光圈：樹根下一片淡淡的光，三圈細線輪流從樹根往外漾開、越擴越淡，像水面的漣漪 */
 function groundRing(parent, bottom, w, h){
-  var base = 'position:absolute;left:50%;bottom:'+bottom+'px;width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
-  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.35);animation:th-ripple 12s ease-out infinite'));
-  parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.62);background:radial-gradient(ellipse at center,rgba(123,227,111,.3) 0%,rgba(123,227,111,.06) 62%,rgba(123,227,111,0) 76%);animation:th-ring 12s ease-in-out infinite'));
+  var base = 'position:absolute;left:50%;bottom:'+(typeof bottom === 'number' ? bottom + 'px' : bottom)+';width:'+w+'px;height:'+h+'px;border-radius:50%;transform:translateX(-50%);';
+  parent.appendChild(el('div', base + 'background:radial-gradient(ellipse at center,rgba(123,227,111,.22) 0%,rgba(123,227,111,.06) 45%,rgba(123,227,111,0) 70%)'));
+  for(var i=0; i<3; i++)
+    parent.appendChild(el('div', base + 'border:1px solid rgba(123,227,111,.55);opacity:0;animation:th-ripple 9s cubic-bezier(.2,.6,.4,1) ' + (-i*3) + 's infinite'));
 }
 /* 一片森林：後排的樹小而淡，前排幾棵比較清楚，頭上掛著名牌（名字、樹種、年紀）。
    名牌跟地上的光圈一樣用呼吸的節奏，彼此錯開一點，像各自在呼吸 */
@@ -1012,9 +1012,11 @@ function arrivalStage(){
   st.appendChild(el('div','position:absolute;left:50%;top:46%;width:min(440px, 110%);aspect-ratio:1;transform:translate(-50%,-50%);background:radial-gradient(circle,rgba(123,227,111,.26) 0%,rgba(123,227,111,.08) 42%,rgba(123,227,111,0) 68%);animation:th-halo 12s ease-in-out infinite'));
   mountMotes(st);
   var GROUND = 54;
-  groundRing(st, GROUND, 300, 70);
   /* 樹的高度跟著螢幕走：約是整個 app 高度的 42%，最高 340px，上面至少留 24px */
-  var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;height:min(340px, 42cqh, calc(100% - '+(GROUND + 34 + 24)+'px));transform:translateX(-50%)');
+  var TREE_H = 'min(340px, 42cqh, calc(100% - '+(GROUND + 34 + 24)+'px))';
+  /* 原圖底部約 7% 空白：光圈中心對準真正的樹根，漣漪才會從樹根漾開 */
+  groundRing(st, 'calc(' + (GROUND + 34 - 35) + 'px + ' + TREE_H + ' * 0.07)', 300, 70);
+  var holder = el('div','position:absolute;left:50%;bottom:'+(GROUND + 34)+'px;height:'+TREE_H+';transform:translateX(-50%)');
   var sway = el('div','height:100%');
   sway.appendChild(fullTree('position:relative;display:block;height:100%;filter:drop-shadow(0 0 22px rgba(123,227,111,.45))', null, true));
   holder.appendChild(sway); st.appendChild(holder);
