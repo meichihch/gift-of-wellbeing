@@ -107,7 +107,7 @@ var GROUPS = [
 ];
 
 /* 目前的選擇與設定：存在這台電腦的瀏覽器裡，重新整理不會不見 */
-var state = { tod:'夜', wx:'clear', sound:false, font:'noto' };
+var state = { tod:'夜', wx:'clear', sound:false, font:'goround' };
 var tune = {}, look = {}, bglook = {}, cloudlook = {};
 try{ Object.assign(state, JSON.parse(localStorage.getItem('th-lab-state') || '{}')); }catch(e){}
 try{ tune = JSON.parse(localStorage.getItem('th-lab-tune') || '{}'); look = JSON.parse(localStorage.getItem('th-lab-look') || '{}'); bglook = JSON.parse(localStorage.getItem('th-lab-bglook') || '{}'); cloudlook = JSON.parse(localStorage.getItem('th-lab-cloudlook') || '{}'); }catch(e){}

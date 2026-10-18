@@ -7,10 +7,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>樹洞 · 互動原型</title>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Chiron+GoRound+TC:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
-  body{margin:0;background:#E3E8E2;color:#0F2418;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif}
+  body{margin:0;background:#E3E8E2;color:#0F2418;font-family:'Outfit','Chiron GoRound TC','PingFang TC',sans-serif}
   button,input{font-family:inherit}
   @keyframes th-pulse{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
   @keyframes th-drift{0%{transform:translateX(-5%)}50%{transform:translateX(5%)}100%{transform:translateX(-5%)}}
@@ -80,7 +80,7 @@
         </div>
       </div>
     </div>
-    <div id="app" style="position:absolute;inset:0;container-type:size;display:flex;flex-direction:column;overflow:hidden;font-family:'Outfit','Noto Sans TC','PingFang TC',sans-serif;background:radial-gradient(130% 55% at 50% -8%,#2F6142 0%,rgba(47,97,66,0) 62%),radial-gradient(100% 50% at 110% 105%,#1E4D33 0%,rgba(30,77,51,0) 60%),linear-gradient(180deg,#14301F 0%,#0B1A12 100%)">
+    <div id="app" style="position:absolute;inset:0;container-type:size;display:flex;flex-direction:column;overflow:hidden;font-family:'Outfit','Chiron GoRound TC','PingFang TC',sans-serif;background:radial-gradient(130% 55% at 50% -8%,#2F6142 0%,rgba(47,97,66,0) 62%),radial-gradient(100% 50% at 110% 105%,#1E4D33 0%,rgba(30,77,51,0) 60%),linear-gradient(180deg,#14301F 0%,#0B1A12 100%)">
       <div id="screenHost" style="flex:1;display:flex;flex-direction:column;min-height:0;position:relative"></div>
       <div id="tabbar" style="position:absolute;left:16px;right:16px;bottom:var(--bottom,26px);z-index:40"></div>
       <div id="toast" style="position:absolute;bottom:104px;left:50%;transform:translateX(-50%);background:rgba(10,24,16,.84);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);color:#F2F6F0;font-size:12.5px;padding:11px 18px;border-radius:999px;white-space:nowrap;z-index:80;display:none"></div>
@@ -105,9 +105,9 @@ var APP = { name:'樹洞', tagline:'把心事說給一棵真的樹聽。', motto
    都是 Google Fonts 上有繁體中文的字體，任何裝置打開都一樣。
    latin 是搭配的英數字體；null 代表直接用中文字體自己的英數字 */
 var FONTS = [
-  {key:'noto',    name:'思源黑體',   note:'目前使用 · 中性、清楚',     family:'Noto Sans TC',         q:'Noto+Sans+TC:wght@300;400;500;600',       latin:'Outfit'},
+  {key:'noto',    name:'思源黑體',   note:'黑體 · 中性、清楚',     family:'Noto Sans TC',         q:'Noto+Sans+TC:wght@300;400;500;600',       latin:'Outfit'},
   {key:'chiron',  name:'昭源黑體',   note:'黑體 · 比思源更柔和',       family:'Chiron Hei HK',        q:'Chiron+Hei+HK:wght@300;400;500;600',      latin:'Outfit'},
-  {key:'goround', name:'昭源甜圓',   note:'圓體 · 溫和、有親切感',     family:'Chiron GoRound TC',    q:'Chiron+GoRound+TC:wght@300;400;500;600',  latin:'Outfit'},
+  {key:'goround', name:'昭源甜圓',   note:'正式字體 · 溫和、有親切感',     family:'Chiron GoRound TC',    q:'Chiron+GoRound+TC:wght@300;400;500;600',  latin:'Outfit'},
   {key:'huninn',  name:'粉圓',       note:'圓體 · 可愛、像在說話',     family:'Huninn',               q:'Huninn',                                  latin:null},
   {key:'iansui',  name:'芫荽',       note:'手寫感 · 像鉛筆寫的字',     family:'Iansui',               q:'Iansui',                                  latin:null},
   {key:'wenkai',  name:'霞鶩文楷',   note:'楷書 · 溫暖、有書卷氣',     family:'LXGW WenKai TC',       q:'LXGW+WenKai+TC:wght@300;400;700',         latin:null},
@@ -122,7 +122,7 @@ function loadFontCss(f){
   l.href = 'https://fonts.googleapis.com/css2?family=' + f.q + '&display=swap';
   document.head.appendChild(l);
 }
-var FONT_KEY = 'noto';
+var FONT_KEY = 'goround';   /* 正式字體：昭源甜圓（2026-10-18 定案） */
 function applyFont(key){
   var f = FONTS.filter(function(x){ return x.key === key; })[0] || FONTS[0];
   FONT_KEY = f.key;
@@ -739,7 +739,9 @@ function miniScene(h, tags, kind, seed){
   svg += '<path d="'+line(nearY, 6)+'" fill="'+P0.near+'"/>';
   /* 樹先放空的 <image>，染好色的圖做好後再填進去 */
   var slopeCol = kind === 'snow' ? '#47584F' : P0.conifer;
-  var tree = function(cx, base, ht, col, op){ var w = ht*363/790; return '<image data-tint="'+col+'" width="'+w.toFixed(1)+'" height="'+ht+'" x="'+(cx - w/2).toFixed(1)+'" y="'+(base - ht).toFixed(1)+'" opacity="'+(op || 1)+'"/>'; };
+  /* 原圖最下面約 7% 是空白：畫的時候往下移這麼多，樹根才會真的踩在地上 */
+  var SINK = 0.07;
+  var tree = function(cx, base, ht, col, op){ var w = ht*363/790; return '<image data-tint="'+col+'" width="'+w.toFixed(1)+'" height="'+ht+'" x="'+(cx - w/2).toFixed(1)+'" y="'+(base - ht + ht*SINK).toFixed(1)+'" opacity="'+(op || 1)+'"/>'; };
   /* 坡上的樹群：遠的小、淡，靠近主樹的大一點 */
   [[150, 44], [176, 58], [212, 50], [238, 70], [356, 66], [384, 52]].forEach(function(t2){
     svg += tree(t2[0], nearY(t2[0]) + 3, t2[1], slopeCol, .95);
@@ -750,6 +752,14 @@ function miniScene(h, tags, kind, seed){
   /* 主樹 */
   var TX = 300, TB = nearY(TX) + 4, TH = 132, TS = TH/790;
   svg += tree(TX, TB, TH, P0.tree, 1);
+  /* 樹根前面再蓋一層同色的坡和幾叢草，把樹根壓進土裡（坡是斜的，下坡那側的根才不會懸空） */
+  svg += '<path d="'+line(function(x){ return nearY(x) + 3; }, 6)+'" fill="'+P0.near+'"/>';
+  var tuft = '';
+  for(var tx=TX-22; tx<=TX+22; tx += 2.5 + rnd()*3){
+    var ty = nearY(tx) + 3.5, tth = 2.5 + rnd()*3;
+    tuft += 'M'+tx.toFixed(1)+' '+ty.toFixed(1)+'q-1 -'+(tth*0.6).toFixed(1)+' -2 -'+tth.toFixed(1)+'M'+tx.toFixed(1)+' '+ty.toFixed(1)+'q1 -'+(tth*0.5).toFixed(1)+' 2.4 -'+(tth*0.9).toFixed(1);
+  }
+  svg += '<path d="'+tuft+'" fill="none" stroke="'+(kind === 'snow' ? '#7E8F86' : P0.tree)+'" stroke-opacity=".8" stroke-width=".8" stroke-linecap="round"/>';
   /* 前景的小土坡和草 */
   svg += '<path d="'+line(lipY, 6)+'" fill="'+(kind === 'snow' ? '#B3C0B9' : P0.tree)+'" opacity=".92"/>';
   var grass = '';
@@ -773,7 +783,7 @@ function miniScene(h, tags, kind, seed){
      鳥停在枝尖，身體一半在天空前面才看得到 */
   var perches = [];
   [[208, 98], [298, 118], [388, 156], [478, 152], [568, 118]].forEach(function(tip){
-    [-1, 1].forEach(function(side){ perches.push({ x: TX + side*tip[1]*0.98*TS, y: TB - TH + (tip[0] - 4)*TS }); });
+    [-1, 1].forEach(function(side){ perches.push({ x: TX + side*tip[1]*0.98*TS, y: TB - TH + TH*SINK + (tip[0] - 4)*TS }); });
   });
   var nb = P0.birds[0] + Math.floor(Math.random()*(P0.birds[1] - P0.birds[0] + 1));
   if(h < 140) nb = Math.min(nb, 1);
@@ -2616,7 +2626,7 @@ if(document.getElementById('appName')) document.getElementById('appName').textCo
 /* 字體：先把每個選項的字體表載進來，按鈕才能用自己的字體顯示；?font=wenkai 可以直接指定 */
 /* 分享版不預載其他字體、也不讀本機記住的選擇，只認網址上的 ?font= */
 if(!SHARE) FONTS.forEach(loadFontCss);
-(function(){ var k = QS.get('font'); if(!k && !SHARE){ try{ k = localStorage.getItem('th-font'); }catch(e){} } applyFont(k || 'noto'); })();
+(function(){ var k = QS.get('font'); if(!k && !SHARE){ try{ k = localStorage.getItem('th-font'); }catch(e){} } applyFont(k || 'goround'); })();
 document.title = SHARE ? APP.name : (APP.name + ' · 互動原型');
 /* 分享版在桌機上：手機外框依視窗高度等比縮小，矮螢幕也看得到整支手機 */
 function fitDevice(){
