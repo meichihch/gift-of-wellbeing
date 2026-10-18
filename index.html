@@ -1623,16 +1623,17 @@ function forestList(){
   var wrap = el('div','display:flex;flex-direction:column;gap:10px');
   FOREST_ORDER.forEach(function(fid){
     var f = FORESTS[fid], s = wxShort(fid);
-    var st = GLASS + ';border-radius:24px;display:block;width:100%;text-align:left;padding:16px 18px;cursor:pointer;color:'+C.text;
+    /* 左邊三行文字、右邊箭頭，箭頭對齊整張卡片的垂直中間 */
+    var st = GLASS + ';border-radius:24px;display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:16px 18px;cursor:pointer;color:'+C.text;
     var b = el('button', st);
-    var top = el('div','display:flex;justify-content:space-between;align-items:center;gap:8px');
-    top.appendChild(el('div','font-size:17px;font-weight:500', f.persona));
-    var arrow = el('span','color:'+C.text3+';font-size:18px;line-height:1','›');
+    var txt = el('div','flex:1;min-width:0');
+    txt.appendChild(el('div','font-size:17px;font-weight:500', f.persona));
+    txt.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:5px', geoLine(f) + (s ? ' · ' + s : '')));
+    txt.appendChild(el('div','font-size:12px;color:'+C.text3+';margin-top:8px', treesOf(fid).map(function(tr){ return tr.name; }).join('、')));
+    b.appendChild(txt);
+    var arrow = el('span','color:'+C.text3+';font-size:18px;line-height:1;flex-shrink:0','›');
     arrow.setAttribute('aria-hidden','true');
-    top.appendChild(arrow);
-    b.appendChild(top);
-    b.appendChild(el('div','font-size:12px;color:'+C.text2+';margin-top:5px', geoLine(f) + (s ? ' · ' + s : '')));
-    b.appendChild(el('div','font-size:12px;color:'+C.text3+';margin-top:8px', treesOf(fid).map(function(tr){ return tr.name; }).join('、')));
+    b.appendChild(arrow);
     b.onclick = function(){ stopSound(); S.forestView = fid; renderScreen(); };
     hover(b, 'background:rgba(255,255,255,.12)', st);
     wrap.appendChild(b);
